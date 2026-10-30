@@ -1,2 +1,28 @@
-# TPU-event-calendar
-A web service for students, student organizations, and clubs. It solves the problem of missing events because announcements are scattered across the communities of individual organizations by automatically collecting announcements from VKontakte communities and displaying them in a single calendar with filtering by category.
+# Календарь мероприятий ВУЗа — API (без сборщика)
+
+Это API‑слой проекта. Он **не ходит в VK**, а отдаёт данные строго из локальной БД. Сбор данных (парсинг ВК) — отдельный процесс, который будет подключён позже по расписанию (НФТ‑03).
+
+## Зачем так сделано
+
+- **Скорость (НФТ‑01):** главная страница и карточки загружаются мгновенно, без ожидания VK API.
+- **Лимиты:** API не упирается в лимиты VK, потому что не делает запросов к нему.
+- **Роли и развитие:** архитектура готова к добавлению ролей (пользователь, организатор, администратор) и кэширования.
+
+## Эндпоинты
+
+- `GET /categories` — список категорий.
+- `GET /events` — список мероприятий с фильтрами: `category`, `date_from`, `date_to`, `q`, `page`.
+- `GET /events/{id}` — детальная карточка мероприятия.
+
+## Формат ответа (пример)
+
+См. `API_SPEC.md`.
+
+## Как запустить
+
+1. Клонируй репозиторий.
+2. Создай виртуальное окружение и установи зависимости:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate        # Windows: venv\Scripts\activate
+   pip install -r requirements.txt
