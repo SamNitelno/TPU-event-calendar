@@ -5,6 +5,7 @@
 - Доска задач: [YouGile](https://ru.yougile.com/team/2f7e58440237/Календарь-мероприятий)
 - Макет: https://event-calendar-tpu.poehali.ws/
 - Как мы работаем с репозиторием: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Как пользоваться Git: [.github/GIT_GUIDE.md](.github/GIT_GUIDE.md)
 - Формат события (общий для всех частей): [docs/event_format.md](docs/event_format.md)
 
 ## Как устроен сервис
