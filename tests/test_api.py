@@ -1,7 +1,11 @@
 from datetime import time, timedelta
 
 import pytest
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
+from api.main import CORS_ORIGINS, app
+from db.database import get_db, make_engine
 from db.models import Event
 
 
@@ -47,6 +51,7 @@ def test_feed_response_matches_event_format(client, add_event, today):
             "title": "Мастер-класс по алтимату",
             "organizer": "Спортклуб «Сибирские львы»",
             "category": {"slug": "sport", "name": "Спорт"},
+            "source": "vk",
             "event_date": today.isoformat(),
             "end_date": None,
             "start_time": "18:00",
@@ -183,3 +188,136 @@ def test_submission_is_saved_as_pending_and_not_shown(client, session_factory, t
 ])
 def test_invalid_submission_is_rejected(client, today, fields):
     assert client.post("/api/submissions", json=submission(today, **fields)).status_code == 422
+
+
+# Для фронтенда
+
+def test_per_page_lets_calendar_take_a_month_at_once(client, add_event):
+    for _ in range(25):
+        add_event()
+    body = client.get("/api/events", params={"per_page": 100}).json()
+    assert (len(body["items"]), body["per_page"], body["total"]) == (25, 100, 25)
+    for wrong in (0, 101):
+        assert client.get("/api/events", params={"per_page": wrong}).status_code == 422
+
+
+def test_source_tells_vk_post_from_form_submission(client, add_event):
+    vk = add_event()
+    form = add_event(source="form")
+    assert client.get(f"/api/events/{vk}").json()["source"] == "vk"
+    assert client.get(f"/api/events/{form}").json()["source"] == "form"
+
+
+def test_published_event_without_category_is_not_shown(client, add_event):
+    event_id = add_event(category="нет такой")
+    assert ids(client.get("/api/events")) == []
+    assert client.get(f"/api/events/{event_id}").status_code == 404
+    assert all(c["events_count"] == 0 for c in client.get("/api/categories").json())
+
+
+def field_errors(response):
+    assert response.status_code == 422, response.text
+    return {tuple(e["loc"]): e["msg"] for e in response.json()["detail"]}
+
+
+def test_errors_point_to_the_field_and_are_in_russian(client, today):
+    def post(**fields):
+        return field_errors(client.post("/api/submissions", json=submission(today, **fields)))
+
+    assert post(event_date="2026-11-01") == {("body", "event_date"): "Дата мероприятия уже прошла"}
+    assert post(category="unknown") == {("body", "category"): "Неизвестная категория"}
+    assert post(end_date="2026-11-03") == {("body", "end_date"): "Дата окончания раньше даты начала"}
+    assert post(organizer="A") == {("body", "organizer"): "Слишком коротко: нужно не меньше 2 символов"}
+    assert post(start_time="25:00") == {("body", "start_time"): "Время в формате ЧЧ:ММ"}
+
+    body = submission(today)
+    del body["title"]
+    response = client.post("/api/submissions", json=body)
+    assert field_errors(response) == {("body", "title"): "Обязательное поле"}
+    # Введённые значения в ответ не попадают: среди них контакт автора
+    assert "input" not in response.json()["detail"][0]
+
+
+def test_query_errors_have_the_same_format(client, today):
+    assert field_errors(client.get("/api/events", params={"date_from": "завтра"})) == {
+        ("query", "date_from"): "Дата в формате ГГГГ-ММ-ДД",
+    }
+    params = {"date_from": (today + timedelta(days=2)).isoformat(), "date_to": today.isoformat()}
+    assert field_errors(client.get("/api/events", params=params)) == {
+        ("query", "date_from"): "Дата «с» позже даты «по»",
+    }
+
+
+def test_empty_form_fields_are_saved_as_not_specified(client, session_factory, today):
+    empty = dict(end_date="", start_time="", end_time="", location="  ", original_post_link="", description="")
+    response = client.post("/api/submissions", json=submission(today, **empty))
+    assert response.status_code == 201, response.text
+    with session_factory() as db:
+        event = db.get(Event, response.json()["id"])
+        saved = (event.end_date, event.start_time, event.end_time, event.location,
+                 event.original_post_link, event.description)
+        assert saved == (None,) * 6
+
+
+def test_submission_keeps_link_to_vk_post(client, session_factory, today):
+    link = "https://vk.com/wall-44845822_52494"
+    response = client.post("/api/submissions", json=submission(today, original_post_link=link))
+    assert response.status_code == 201, response.text
+    with session_factory() as db:
+        assert db.get(Event, response.json()["id"]).original_post_link == link
+
+
+@pytest.mark.parametrize("link", ["https://example.com/wall-1_2", "vk.com/wall-1_2", "javascript:alert(1)"])
+def test_submission_link_must_lead_to_vk(client, today, link):
+    errors = field_errors(client.post("/api/submissions", json=submission(today, original_post_link=link)))
+    assert ("body", "original_post_link") in errors
+
+
+def test_end_time_must_be_after_start_within_one_day(client, today):
+    same_day = submission(today, start_time="18:00", end_time="17:00")
+    assert field_errors(client.post("/api/submissions", json=same_day)) == {
+        ("body", "end_time"): "Время окончания должно быть позже начала",
+    }
+    # У многодневного мероприятия «до 10:00 последнего дня» — нормально
+    multi_day = submission(today, end_date=(today + timedelta(days=7)).isoformat(), start_time="18:00", end_time="10:00")
+    assert client.post("/api/submissions", json=multi_day).status_code == 201
+
+
+def test_cors_lets_dev_server_of_frontend_call_api(client):
+    origin = CORS_ORIGINS[0]
+    response = client.get("/api/categories", headers={"Origin": origin})
+    assert response.headers["access-control-allow-origin"] == origin
+    preflight = client.options("/api/submissions", headers={
+        "Origin": origin,
+        "Access-Control-Request-Method": "POST",
+        "Access-Control-Request-Headers": "content-type",
+    })
+    assert preflight.status_code == 200
+    foreign = client.get("/api/categories", headers={"Origin": "https://example.com"})
+    assert "access-control-allow-origin" not in foreign.headers
+
+
+def test_unknown_api_path_is_404(client):
+    assert client.get("/api/nope").status_code == 404
+
+
+# Проверка работы
+
+def test_health_is_ok_when_database_is_ready(client):
+    response = client.get("/api/health")
+    assert (response.status_code, response.json()) == (200, {"status": "ok"})
+
+
+def test_health_is_503_when_tables_are_not_created(client):
+    engine = make_engine("sqlite://", poolclass=StaticPool)  # база без таблиц
+    empty = sessionmaker(bind=engine)
+
+    def override_get_db():
+        with empty() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = override_get_db
+    response = client.get("/api/health")
+    assert response.status_code == 503
+    assert "python -m db.init_db" in response.json()["detail"]
+    engine.dispose()

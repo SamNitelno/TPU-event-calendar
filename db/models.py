@@ -70,5 +70,5 @@ class Event(Base):
     contact: Mapped[str | None] = mapped_column(String(200))  # только из формы, в API не отдаётся
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
-    category: Mapped[Category] = relationship()
+    category: Mapped[Category | None] = relationship()  # пусто, если сборщик не определил категорию
     post: Mapped[VkPost | None] = relationship()

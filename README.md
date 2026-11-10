@@ -38,9 +38,11 @@ python -m venv venv
 venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
 pip install -r requirements.txt
 copy .env.example .env           # macOS/Linux: cp .env.example .env — и вписать ключ VK
-python -m db.init_db             # создать базу с категориями и тестовыми данными
+python -m db.init_db             # создать таблицы, категории и сообщества
+python -m db.seed_test           # тестовые мероприятия — только для разработки
 uvicorn api.main:app --reload    # сайт: http://127.0.0.1:8000, описание API: /docs
-python -m collector.fetch        # загрузить новые посты из ВК
+python -m collector.run          # загрузить новые посты из ВК
+python -m pytest                 # тесты
 ```
 
-Команды появятся по мере того, как будут готовы соответствующие части.
+Запросы API и подключение фронтенда — в [docs/api.md](docs/api.md).
