@@ -6,8 +6,10 @@
 from datetime import date, datetime, time, timedelta
 
 from sqlalchemy import func, select
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import Session
 
-from db.database import SessionLocal
+from db.database import engine as default_engine
 from db.init_db import init_db
 from db.models import (
     SOURCE_FORM, SOURCE_VK, STATUS_PENDING, STATUS_PUBLISHED, STATUS_REJECTED,
@@ -57,12 +59,12 @@ def day(offset: int | None) -> date | None:
     return None if offset is None else date.today() + timedelta(days=offset)
 
 
-def seed() -> None:
-    init_db()
-    with SessionLocal() as db:
+def seed(engine: Engine = default_engine) -> int:
+    """Добавляет тестовые мероприятия в пустую базу. Возвращает, сколько добавлено."""
+    init_db(engine)
+    with Session(engine) as db:
         if db.scalar(select(func.count()).select_from(Event)):
-            print("В базе уже есть мероприятия, тестовые не добавлены")
-            return
+            return 0
 
         categories = {c.slug: c for c in db.scalars(select(Category))}
         communities = {c.owner_id: c for c in db.scalars(select(VkCommunity))}
@@ -100,8 +102,9 @@ def seed() -> None:
             ))
 
         db.commit()
-        print(f"Добавлено мероприятий: {len(VK_EVENTS) + len(FORM_EVENTS)}")
+    return len(VK_EVENTS) + len(FORM_EVENTS)
 
 
 if __name__ == "__main__":
-    seed()
+    added = seed()
+    print(f"Добавлено мероприятий: {added}" if added else "В базе уже есть мероприятия, тестовые не добавлены")

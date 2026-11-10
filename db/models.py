@@ -12,6 +12,18 @@ class Base(DeclarativeBase):
     pass
 
 
+class User(Base):
+    """Администратор сайта: проверяет заявки (ФТ-12). Других пользователей у сайта нет."""
+
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    username: Mapped[str] = mapped_column(String(64), unique=True)
+    # Только хеш, сам пароль в базе не хранится (НФТ-06)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class VkCommunity(Base):
     __tablename__ = "vk_communities"
 
