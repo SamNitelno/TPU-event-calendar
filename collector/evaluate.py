@@ -13,8 +13,10 @@
 - дата верна, если совпал день начала (event_date). Совпадение конца (end_date) считается отдельно;
 - время верно, если совпало время начала (start_time);
 - место верно, если совпадает по смыслу: после приведения к одному виду общих слов не меньше
-  половины от более короткого варианта и среди них есть не только общие слова вроде «ТПУ» или «корпус»;
-- если в посте поля нет (в эталоне пусто) и разбор его не выдумал — это верный ответ.
+  половины от более короткого варианта и среди них есть не только общие слова вроде «ТПУ» или «корпус».
+  Слова сравниваются по первым пяти буквам, чтобы падеж не мешал: «в учебном корпусе» = «учебный корпус»;
+- если в посте поля нет (в эталоне пусто) и разбор его не выдумал — это верный ответ;
+- «опубликовано сразу» считается так же, как в сборщике: collector.extract.auto_publish.
 """
 import argparse
 import csv
@@ -25,7 +27,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime, time
 from pathlib import Path
 
-from collector.extract import Parsed, parse_post
+from collector.extract import Parsed, auto_publish, parse_post
 
 REFERENCE = Path(__file__).resolve().parent.parent / "data" / "reference_50.csv"
 COLUMNS = ["link", "community", "published_at", "text", "is_event", "event_date", "end_date",
@@ -40,6 +42,9 @@ GENERIC_WORDS = {
     "ауд", "аудитория", "каб", "кабинет", "этаж", "зал", "и", "в", "на", "по", "с", "у", "площадка",
 }
 WORD_RE = re.compile(r"[a-zа-я0-9]+")
+STEM = 5  # столько первых букв сравниваем: «корпусе» и «корпус» — одно слово
+GENERIC_STEMS = {word[:STEM] for word in GENERIC_WORDS}
+OWNER_RE = re.compile(r"wall(-?\d+)_")
 
 Parser = Callable[[dict, datetime], Parsed]
 
@@ -154,20 +159,25 @@ def load_reference(path: Path = REFERENCE) -> list[Reference]:
 # Сверка
 
 def place_words(place: str) -> set[str]:
-    return set(WORD_RE.findall(place.lower().replace("ё", "е")))
+    return {word[:STEM] for word in WORD_RE.findall(place.lower().replace("ё", "е"))}
 
 
 def same_place(expected: str | None, got: str | None) -> bool:
     if expected is None or got is None:
         return expected is None and got is None
     a, b = place_words(expected), place_words(got)
-    if not (a - GENERIC_WORDS):
+    if not (a - GENERIC_STEMS):
         # В эталоне только общие слова, например «ТПУ», — засчитываем лишь точное совпадение
         return a == b
     common = a & b
-    if not (common - GENERIC_WORDS):
+    if not (common - GENERIC_STEMS):
         return False
     return len(common) / min(len(a), len(b)) >= 0.5
+
+
+def owner_id(link: str) -> int | None:
+    m = OWNER_RE.search(link)
+    return int(m.group(1)) if m else None
 
 
 def _show(value) -> str:
@@ -182,7 +192,8 @@ def evaluate(rows: list[Reference], parse: Parser = parse_post) -> Report:
     report = Report()
     for row in rows:
         try:
-            parsed = parse({"text": row.text}, row.published_at)
+            # owner_id — как в ответе wall.get: сообщество подсказывает категорию
+            parsed = parse({"text": row.text, "owner_id": owner_id(row.link)}, row.published_at)
         except Exception as exc:  # падение разбора на посте — тоже неверный ответ
             report.crashes.append(f"{row.link}: {type(exc).__name__}: {exc}")
             parsed = Parsed(title="", description=row.text, event_date=None, end_date=None, start_time=None,
@@ -206,7 +217,7 @@ def evaluate(rows: list[Reference], parse: Parser = parse_post) -> Report:
             ("категория", report.category.add(row.category, parsed.category, row.category == parsed.category),
              row.category, parsed.category),
         ]
-        if parsed.event_date and parsed.category:
+        if auto_publish(parsed):
             report.published += 1
             if parsed.event_date != row.event_date:
                 report.published_wrong_date.append(
