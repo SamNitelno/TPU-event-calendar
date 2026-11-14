@@ -3,7 +3,7 @@ import { resolve } from 'path'
 
 export default defineConfig({
   build: {
-    outDir: 'dist',
+    outDir: 'static/dist',
     emptyOutDir: true,
     rollupOptions: {
       input: {
