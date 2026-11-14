@@ -4,9 +4,16 @@ import { resolve } from 'path'
 export default defineConfig({
   build: {
     outDir: 'dist',
+    emptyOutDir: true,
     rollupOptions: {
       input: {
-        style: resolve(__dirname, 'static/style.css')
+        style: resolve(__dirname, 'static/style.css'),
+        api: resolve(__dirname, 'src/api.ts')
+      },
+      output: {
+        assetFileNames: '[name].[hash][extname]',
+        chunkFileNames: '[name].[hash].js',
+        entryFileNames: '[name].[hash].js'
       }
     }
   },
