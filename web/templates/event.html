@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}{{ event.title }} — Календарь ТПУ{% endblock %}
+
+{% block content %}
+<article class="max-w-3xl mx-auto">
+  <div class="mb-6">
+    <a href="/" class="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary transition">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+      Вернуться к ленте
+    </a>
+  </div>
+
+  <header class="mb-8">
+    <div class="flex items-center gap-3 mb-4">
+      <span class="rounded-full bg-cat-{{ event.category }} text-cat-{{ event.category }}-fg px-3 py-1 text-xs font-bold">{{ event.category_name }}</span>
+      <span class="text-sm text-muted-foreground">
+        {{ event.date.day }} {{ event.date.strftime('%B')|lower }}
+        {% if event.end_date and event.end_date != event.date %}
+          – {{ event.end_date.day }} {{ event.end_date.strftime('%B')|lower }}
+        {% endif %}
+      </span>
+    </div>
+    <h1 class="font-display text-3xl font-bold leading-tight text-foreground sm:text-4xl lg:text-5xl">{{ event.title }}</h1>
+    <div class="mt-4 flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
+      {% if event.time %}
+        <span class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          {{ event.time }}
+        </span>
+      {% endif %}
+      {% if event.is_online %}
+        <span class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" x2="22" y1="12" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+          Онлайн
+        </span>
+      {% elif event.location %}
+        <span class="flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+          {{ event.location }}
+        </span>
+      {% endif %}
+      <span class="flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path></svg>
+        {{ event.organizer }}
+      </span>
+    </div>
+  </header>
+
+  <div class="prose prose-slate max-w-none text-foreground">
+    <p class="text-lg leading-relaxed mb-6">{{ event.description }}</p>
+    
+    {% if event.vk_post_url %}
+      <div class="my-8 rounded-2xl border border-border bg-card p-6">
+        <h3 class="text-xl font-bold mb-4">Подробности и регистрация</h3>
+        <p class="text-muted-foreground mb-4">Вся актуальная информация размещена в официальном сообществе ВКонтакте.</p>
+        <a href="{{ event.vk_post_url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-2 rounded-xl bg-[#0077FF] px-6 py-3 font-bold text-white transition hover:bg-[#0066dd]">
+          <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M15.684 0H8.316C1.592 0 0 1.592 0 8.316v7.368C0 22.408 1.592 24 8.316 24h7.368C22.408 24 24 22.408 24 15.684V8.316C24 1.592 22.408 0 15.684 0zm3.69 17.123c-.86.036-1.2-.78-2.1-1.68-.84-.84-1.2-1.08-1.68-1.08-.36 0-.48.12-.48.72v1.56c0 .48-.12.84-.96.84-2.52 0-5.28-1.56-7.32-4.44-2.88-4.08-3.72-7.2-3.72-7.8 0-.36.12-.6.72-.6h1.92c.36 0 .6.12.84.6.84 2.4 2.28 4.56 2.88 4.56.24 0 .36-.12.36-.72V6.72c-.12-1.08-.6-1.2-1.08-1.2-.36 0-.48.12-.48.12s.12-.6.96-.6c.84 0 1.2.36 1.2 1.08v3.6c0 .36.12.48.36.48.24 0 .48-.12.96-.6 1.08-1.2 1.8-2.76 1.8-2.76.12-.24.36-.48.84-.48h1.92c.6 0 .72.36.6.72-.24 1.08-2.52 3.96-2.88 4.32-.36.36-.48.48 0 1.08.36.48 1.56 1.44 2.4 2.4.72.84 1.2 1.56 1.32 2.04.12.48-.24.72-.72.72z"/></svg>
+          Открыть пост во ВКонтакте
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</article>
+{% endblock %}
