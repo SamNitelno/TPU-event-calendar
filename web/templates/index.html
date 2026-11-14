@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="mb-6 sm:mb-8">
+  <h1 class="font-display text-[34px] font-bold leading-[1.05] tracking-tight text-foreground sm:text-5xl lg:text-[56px]">
+    {% if current_category %}
+      {{ category_name }}
+    {% else %}
+      Все события ТПУ <span class="text-primary">в одном календаре</span>
+    {% endif %}
+  </h1>
+</div>
+
+{# Мобильные фильтры #}
+<div class="mb-6 lg:hidden">
+  <div class="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+    <a href="/" class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition {% if not current_category %}border-primary bg-primary text-primary-foreground{% else %}border-border bg-card text-foreground{% endif %}">
+      Все<span class="text-xs {% if not current_category %}text-primary-foreground/80{% else %}text-muted-foreground{% endif %}">{{ total_count }}</span>
+    </a>
+    {% for slug, name, count in categories %}
+      <a href="/?category={{ slug }}" class="flex shrink-0 items-center gap-2 rounded-full border px-3.5 py-2 text-sm font-medium transition {% if current_category == slug %}border-primary bg-primary text-primary-foreground{% else %}border-border bg-card text-foreground{% endif %}">
+        {{ name }}<span class="text-xs {% if current_category == slug %}text-primary-foreground/80{% else %}text-muted-foreground{% endif %}">{{ count }}</span>
+      </a>
+    {% endfor %}
+  </div>
+</div>
+
+{% if days %}
+  <div class="space-y-8 sm:space-y-10">
+    {% for day in days %}
+      <section class="grid gap-3 sm:grid-cols-[150px_1fr] sm:gap-6">
+        <div class="flex items-baseline gap-3 sm:block">
+          <div class="font-display text-4xl font-bold leading-none text-primary sm:text-5xl">{{ day.date.day }}</div>
+          <div class="sm:mt-2">
+            <div class="text-sm capitalize text-foreground">{{ day.date.strftime('%B')|lower }}, {{ day.date.strftime('%A')|lower }}</div>
+          </div>
+        </div>
+        <div class="min-w-0 space-y-3">
+          {% for event in day.events %}
+            <a href="/event/{{ event.id }}" class="group flex w-full items-center gap-4 rounded-2xl border border-border bg-card text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-[0_14px_30px_-18px_hsl(var(--foreground)/0.35)] p-4 sm:p-5">
+              <span class="grid shrink-0 place-items-center rounded-xl bg-cat-{{ event.category }} text-cat-{{ event.category }}-fg h-11 w-11">
+                {% if event.category == 'science' %}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 2v7.527a2 2 0 0 1-.211.896L4.72 20.55a1 1 0 0 0 .9 1.45h12.76a1 1 0 0 0 .9-1.45l-5.069-10.127A2 2 0 0 1 14 9.527V2"></path><path d="M8.5 2h7"></path><path d="M7 16h10"></path></svg>
+                {% elif event.category == 'sport' %}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"></path><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"></path><path d="M4 22h16"></path><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"></path><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"></path><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"></path></svg>
+                {% elif event.category == 'culture' %}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"></path><circle cx="6" cy="18" r="3"></circle><circle cx="18" cy="16" r="3"></circle></svg>
+                {% elif event.category == 'career' %}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path><rect width="20" height="14" x="2" y="6" rx="2"></rect></svg>
+                {% elif event.category == 'volunteer' %}
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.79 0l2.96 2.66"></path><path d="m18 15-2-2"></path><path d="m15 18-2-2"></path></svg>
+                {% endif %}
+              </span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-center gap-2 text-xs text-muted-foreground">
+                  <span class="truncate">{{ event.organizer }}</span>
+                  <span class="hidden shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold sm:inline bg-cat-{{ event.category }} text-cat-{{ event.category }}-fg">{{ event.category_name }}</span>
+                </span>
+                <span class="mt-0.5 block break-words font-bold leading-snug text-foreground sm:text-[17px]">{{ event.title }}</span>
+                <span class="mt-1 flex flex-wrap items-center gap-x-1.5 text-sm text-muted-foreground">
+                  {# Многодневное — диапазон #}
+                  {% if event.end_date and event.end_date != event.date %}
+                    <span class="truncate tabular-nums">{{ event.date.day }}–{{ event.end_date.day }} {{ event.date.strftime('%B')|lower }}</span>
+                  {% else %}
+                    <span class="truncate tabular-nums">{{ event.date.day }} {{ event.date.strftime('%B')|lower }}</span>
+                  {% endif %}
+                  {# Время — только если есть #}
+                  {% if event.time %}
+                    <span class="flex min-w-0 items-center gap-1.5"><span aria-hidden="true">·</span><span class="truncate tabular-nums">{{ event.time }}</span></span>
+                  {% endif %}
+                  {# Адрес — «Онлайн» если онлайн #}
+                  {% if event.is_online %}
+                    <span class="flex min-w-0 items-center gap-1.5"><span aria-hidden="true">·</span><span class="truncate">Онлайн</span></span>
+                  {% elif event.location %}
+                    <span class="flex min-w-0 items-center gap-1.5"><span aria-hidden="true">·</span><span class="truncate">{{ event.location }}</span></span>
+                  {% endif %}
+                </span>
+              </span>
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-right shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1 group-hover:text-primary"><path d="m9 18 6-6-6-6"></path></svg>
+            </a>
+          {% endfor %}
+        </div>
+      </section>
+    {% endfor %}
+  </div>
+{% else %}
+  {# Пустая лента #}
+  <div class="flex flex-col items-center justify-center py-20 text-center">
+    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="mb-4 text-muted-foreground"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+    <p class="text-lg font-semibold text-foreground">Пока нет мероприятий</p>
+    <p class="mt-2 text-sm text-muted-foreground">Загляните позже — мы добавим новые события</p>
+  </div>
+{% endif %}
+{% endblock %}
