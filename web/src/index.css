@@ -1,0 +1,141 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 150 12% 97%;
+    --foreground: 153 36% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 153 36% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 153 36% 10%;
+
+    --primary: 151 74% 30%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 148 24% 92%;
+    --secondary-foreground: 153 36% 10%;
+
+    --muted: 150 14% 94%;
+    --muted-foreground: 152 6% 39%;
+
+    --accent: 148 30% 91%;
+    --accent-foreground: 151 74% 24%;
+
+    --destructive: 0 72% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 150 12% 89%;
+    --input: 150 12% 86%;
+    --ring: 151 74% 30%;
+
+    --radius: 0.875rem;
+
+    --highlight: 43 96% 56%;
+    --highlight-foreground: 153 36% 10%;
+
+    --cat-science: 205 80% 94%;
+    --cat-science-fg: 205 70% 36%;
+    --cat-sport: 30 90% 93%;
+    --cat-sport-fg: 25 80% 40%;
+    --cat-culture: 330 70% 95%;
+    --cat-culture-fg: 330 55% 42%;
+    --cat-career: 260 60% 95%;
+    --cat-career-fg: 260 45% 45%;
+    --cat-volunteer: 145 55% 92%;
+    --cat-volunteer-fg: 151 74% 26%;
+    --cat-student: 48 90% 90%;
+    --cat-student-fg: 40 80% 30%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 153 36% 10%;
+    --sidebar-primary: 151 74% 30%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 148 30% 91%;
+    --sidebar-accent-foreground: 153 36% 10%;
+    --sidebar-border: 150 12% 89%;
+    --sidebar-ring: 151 74% 30%;
+  }
+
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 217.2 32.6% 17.5%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3 {
+    @apply font-display;
+  }
+}
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+}
+
+@layer components {
+  .guide { @apply text-[15px] leading-relaxed text-foreground/90 sm:text-base; }
+  .guide h1 { @apply font-display text-2xl font-bold leading-tight text-foreground sm:text-4xl; }
+  .guide h2 { @apply mt-10 scroll-mt-24 border-t border-border pt-8 font-display text-xl font-bold text-foreground sm:text-2xl; }
+  .guide h1 + p { @apply mt-3 text-muted-foreground; }
+  .guide p { @apply mt-3; }
+  .guide ol, .guide ul { @apply mt-3 space-y-2 pl-5; }
+  .guide ol { @apply list-decimal; }
+  .guide ul { @apply list-disc; }
+  .guide li > ul { @apply mt-2; }
+  .guide li::marker { @apply font-semibold text-primary; }
+  .guide strong { @apply font-semibold text-foreground; }
+  .guide a { @apply font-medium text-primary underline underline-offset-2; }
+  .guide blockquote { @apply mt-4 rounded-2xl border border-highlight/60 bg-highlight/15 px-4 py-3 text-foreground; }
+  .guide blockquote p { @apply mt-0; }
+  .guide img { @apply mx-auto mt-5 w-full max-w-[300px] rounded-2xl border border-border shadow-[0_14px_30px_-18px_hsl(var(--foreground)/0.35)]; }
+}
