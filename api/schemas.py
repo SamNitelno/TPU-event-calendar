@@ -1,4 +1,5 @@
 """Формат запросов и ответов API. Имена полей — как в docs/event_format.md."""
+
 from datetime import date, time
 from typing import Annotated, Literal
 from urllib.parse import urlsplit
@@ -67,7 +68,9 @@ class Submission(BaseModel):
     start_time: time | None = None
     end_time: time | None = None
     location: str | None = Field(None, max_length=300)
-    original_post_link: str | None = Field(None, max_length=300, description="Ссылка на пост ВКонтакте, если анонс уже есть")
+    original_post_link: str | None = Field(
+        None, max_length=300, description="Ссылка на пост ВКонтакте, если анонс уже есть"
+    )
     description: str | None = Field(None, max_length=5000)
     contact: str = Field(min_length=3, max_length=200, description="Как связаться с автором. В API не отдаётся")
 

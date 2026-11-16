@@ -1,0 +1,5 @@
+{
+  "name": "tpu-event-calendar",
+  "private": true,
+  "engines": {"node": "22.x"}
+}

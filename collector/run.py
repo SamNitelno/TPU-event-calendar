@@ -13,6 +13,7 @@
 
 Закреплённый пост разбираем как обычный: часто это анонс ближайшего события, а повтор отсекает проверка выше.
 """
+
 import argparse
 import logging
 from collections import Counter
@@ -25,8 +26,13 @@ from collector.extract import auto_publish, is_announcement, is_report, parse_po
 from collector.vk_client import VkClient
 from db.database import SessionLocal
 from db.models import (
-    SOURCE_VK, STATUS_PENDING, STATUS_PUBLISHED,
-    Category, Event, VkCommunity, VkPost,
+    SOURCE_VK,
+    STATUS_PENDING,
+    STATUS_PUBLISHED,
+    Category,
+    Event,
+    VkCommunity,
+    VkPost,
 )
 
 load_dotenv()
@@ -47,10 +53,12 @@ def post_link(owner_id: int, post_id: int) -> str:
 def save_post(db, community: VkCommunity, item: dict, categories: dict[str, Category]) -> str:
     """Сохраняет один пост. Возвращает, что с ним стало: published, pending, post_only, repeat, duplicate, ads."""
     vk_post_id = item["id"]
-    if db.scalar(select(VkPost.id).where(
-        VkPost.community_id == community.id,
-        VkPost.vk_post_id == vk_post_id,
-    )):
+    if db.scalar(
+        select(VkPost.id).where(
+            VkPost.community_id == community.id,
+            VkPost.vk_post_id == vk_post_id,
+        )
+    ):
         return DUPLICATE
     if item.get("marked_as_ads"):
         return ADS
@@ -73,38 +81,52 @@ def save_post(db, community: VkCommunity, item: dict, categories: dict[str, Cate
 
     category = categories.get(parsed.category) if parsed.category else None
     status = STATUS_PUBLISHED if (category and auto_publish(parsed)) else STATUS_PENDING
-    db.add(Event(
-        post=post,
-        source=SOURCE_VK,
-        status=status,
-        category=category,
-        title=parsed.title,
-        description=parsed.description,
-        event_date=parsed.event_date,
-        end_date=parsed.end_date,
-        start_time=parsed.start_time,
-        end_time=parsed.end_time,
-        location=parsed.location,
-        organizer=community.name,
-        original_post_link=link,
-        image_url=parsed.image_url,
-    ))
+    db.add(
+        Event(
+            post=post,
+            source=SOURCE_VK,
+            status=status,
+            category=category,
+            title=parsed.title,
+            description=parsed.description,
+            event_date=parsed.event_date,
+            end_date=parsed.end_date,
+            start_time=parsed.start_time,
+            end_time=parsed.end_time,
+            location=parsed.location,
+            organizer=community.name,
+            original_post_link=link,
+            image_url=parsed.image_url,
+        )
+    )
     return status
 
 
 def run(limit_per_community: int = 50, client: VkClient | None = None) -> dict[str, int]:
     """Проход по активным сообществам. Возвращает счётчики для лога."""
     client = client or VkClient()
-    stats = Counter({key: 0 for key in (
-        "communities", "posts_seen", "events_new", "skipped", STATUS_PUBLISHED, STATUS_PENDING,
-        POST_ONLY, REPEAT, ADS, "errors", "failed_communities",
-    )})
+    stats = Counter(
+        {
+            key: 0
+            for key in (
+                "communities",
+                "posts_seen",
+                "events_new",
+                "skipped",
+                STATUS_PUBLISHED,
+                STATUS_PENDING,
+                POST_ONLY,
+                REPEAT,
+                ADS,
+                "errors",
+                "failed_communities",
+            )
+        }
+    )
 
     with SessionLocal() as db:
         categories = {c.slug: c for c in db.scalars(select(Category))}
-        communities = db.scalars(
-            select(VkCommunity).where(VkCommunity.is_active.is_(True))
-        ).all()
+        communities = db.scalars(select(VkCommunity).where(VkCommunity.is_active.is_(True))).all()
 
         for community in communities:
             stats["communities"] += 1
@@ -147,13 +169,18 @@ def run(limit_per_community: int = 50, client: VkClient | None = None) -> dict[s
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Сбор постов из сообществ ВК")
-    parser.add_argument("--limit", type=int, default=50,
-                        help="Сколько последних постов брать у сообщества. Больше 100 — постранично")
+    parser.add_argument(
+        "--limit", type=int, default=50, help="Сколько последних постов брать у сообщества. Больше 100 — постранично"
+    )
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("httpcore").setLevel(logging.WARNING)
-    run(args.limit)
+    if not 1 <= args.limit <= 1000:
+        parser.error("--limit должен быть от 1 до 1000")
+    stats = run(args.limit)
+    if stats["communities"] == 0 or stats["failed_communities"] or stats["errors"]:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

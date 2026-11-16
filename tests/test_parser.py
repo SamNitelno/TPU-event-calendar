@@ -1,4 +1,5 @@
 """Разбор текста постов. Сеть не нужна — на входе словари, как из wall.get."""
+
 from datetime import date, datetime, time
 
 import pytest
@@ -10,9 +11,12 @@ PUBLISHED = datetime(2026, 10, 20, 12, 0)
 
 
 def test_range_date_and_range_time():
-    p = parse_post({
-        "text": "Фестиваль «Событие»\n3–5 ноября\nНачало в 18:00–20:00\nГде: МКЦ ТПУ",
-    }, PUBLISHED)
+    p = parse_post(
+        {
+            "text": "Фестиваль «Событие»\n3–5 ноября\nНачало в 18:00–20:00\nГде: МКЦ ТПУ",
+        },
+        PUBLISHED,
+    )
     assert p.event_date == date(2026, 11, 3)
     assert p.end_date == date(2026, 11, 5)
     assert (p.start_time, p.end_time) == (time(18, 0), time(20, 0))
@@ -66,14 +70,18 @@ def test_unknown_category_is_none():
 
 
 def test_image_url_picks_largest_size():
-    attachments = [{
-        "type": "photo",
-        "photo": {"sizes": [
-            {"width": 100, "height": 100, "url": "small"},
-            {"width": 800, "height": 600, "url": "big"},
-            {"width": 320, "height": 240, "url": "medium"},
-        ]},
-    }]
+    attachments = [
+        {
+            "type": "photo",
+            "photo": {
+                "sizes": [
+                    {"width": 100, "height": 100, "url": "small"},
+                    {"width": 800, "height": 600, "url": "big"},
+                    {"width": 320, "height": 240, "url": "medium"},
+                ]
+            },
+        }
+    ]
     assert extract_image_url(attachments) == "big"
     assert extract_image_url([]) is None
     assert extract_image_url(None) is None
@@ -111,12 +119,15 @@ def test_short_numeric_date_needs_a_sign_of_date():
     assert when("Начало в 18.30").start_time == time(18, 30)
 
 
-@pytest.mark.parametrize("text, start, end", [
-    ("Школа пройдёт со 2 по 6 декабря", date(2026, 12, 2), date(2026, 12, 6)),
-    ("С 26 по 30 ноября — неделя науки", date(2026, 11, 26), date(2026, 11, 30)),
-    ("Сезон: 28 декабря 2026 — 15 января 2027", date(2026, 12, 28), date(2027, 1, 15)),
-    ("Первый этап: 21 декабря 2026 — 26 марта 2027 года", date(2026, 12, 21), date(2027, 3, 26)),
-])
+@pytest.mark.parametrize(
+    "text, start, end",
+    [
+        ("Школа пройдёт со 2 по 6 декабря", date(2026, 12, 2), date(2026, 12, 6)),
+        ("С 26 по 30 ноября — неделя науки", date(2026, 11, 26), date(2026, 11, 30)),
+        ("Сезон: 28 декабря 2026 — 15 января 2027", date(2026, 12, 28), date(2027, 1, 15)),
+        ("Первый этап: 21 декабря 2026 — 26 марта 2027 года", date(2026, 12, 21), date(2027, 3, 26)),
+    ],
+)
 def test_ranges(text, start, end):
     assert parse_dates(text, PUBLISHED) == (start, end)
 
@@ -151,7 +162,10 @@ def test_two_equal_dates_are_ambiguous():
 
 def test_time_rules():
     assert when("Встреча 5 ноября в 12:00 по МСК").start_time == time(16, 0)
-    assert (when("5 ноября, 18:00–20:00").start_time, when("5 ноября, 18:00–20:00").end_time) == (time(18, 0), time(20, 0))
+    assert (when("5 ноября, 18:00–20:00").start_time, when("5 ноября, 18:00–20:00").end_time) == (
+        time(18, 0),
+        time(20, 0),
+    )
     # Конец — только диапазон на той же строке, а не последнее время в тексте
     w = when("5 ноября\nСбор в 10:00\nAfter-party в 21:00")
     assert (w.start_time, w.end_time) == (time(10, 0), None)
@@ -161,32 +175,43 @@ def test_time_rules():
 
 # Место
 
-@pytest.mark.parametrize("text, place", [
-    ("Где: МКЦ ТПУ", "МКЦ ТПУ"),
-    ("📍 Корпус 10, ауд. 305", "Корпус 10, ауд. 305"),
-    ("5 ноября, 16:00, Спорткомплекс ТПУ.", "Спорткомплекс ТПУ"),
-    ("Ждём вас 5 ноября в 18:00 в аудитории 112 (Ленина, 30) будет интересно", "Аудитории 112 (Ленина, 30)"),
-    ("Приходи 7 ноября на Усова, 7", "Усова, 7"),
-    ("▫ Стадион «Политехник» — место проведения", "Стадион «Политехник»"),
-    ("Место: бизнес-инкубатор «Б51» (ул. Белинского, 51). Регистрация: clck.ru/x", "Бизнес-инкубатор «Б51» (ул. Белинского, 51)"),
-    ("Финал пройдёт 5 мая в г. Новосибирск", "г. Новосибирск"),
-    ("Вебинар 5 ноября в 15:00, ссылка в комментариях", "Онлайн"),
-])
+
+@pytest.mark.parametrize(
+    "text, place",
+    [
+        ("Где: МКЦ ТПУ", "МКЦ ТПУ"),
+        ("📍 Корпус 10, ауд. 305", "Корпус 10, ауд. 305"),
+        ("5 ноября, 16:00, Спорткомплекс ТПУ.", "Спорткомплекс ТПУ"),
+        ("Ждём вас 5 ноября в 18:00 в аудитории 112 (Ленина, 30) будет интересно", "Аудитории 112 (Ленина, 30)"),
+        ("Приходи 7 ноября на Усова, 7", "Усова, 7"),
+        ("▫ Стадион «Политехник» — место проведения", "Стадион «Политехник»"),
+        (
+            "Место: бизнес-инкубатор «Б51» (ул. Белинского, 51). Регистрация: clck.ru/x",
+            "Бизнес-инкубатор «Б51» (ул. Белинского, 51)",
+        ),
+        ("Финал пройдёт 5 мая в г. Новосибирск", "г. Новосибирск"),
+        ("Вебинар 5 ноября в 15:00, ссылка в комментариях", "Онлайн"),
+    ],
+)
 def test_place(text, place):
     assert parse_post({"text": text}, PUBLISHED).location == place
 
 
-@pytest.mark.parametrize("text", [
-    "Дата и место:\n🗓 5 ноября (пятница)",  # метка без значения не берёт следующую строку
-    "▫теплая компания в уютной аудитории",  # не конкретное место
-    "Анкету присылайте на почту, корпус 11, офис 232",  # контакты, а не место мероприятия
-    "Отборочный этап (онлайн): 1 ноября\nКонкурсные дни: 20 ноября",  # «онлайн» не в строке с датой
-])
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Дата и место:\n🗓 5 ноября (пятница)",  # метка без значения не берёт следующую строку
+        "▫теплая компания в уютной аудитории",  # не конкретное место
+        "Анкету присылайте на почту, корпус 11, офис 232",  # контакты, а не место мероприятия
+        "Отборочный этап (онлайн): 1 ноября\nКонкурсные дни: 20 ноября",  # «онлайн» не в строке с датой
+    ],
+)
 def test_no_place(text):
     assert parse_post({"text": text}, PUBLISHED).location is None
 
 
 # Категория, разметка ВК, анонс
+
 
 def test_category_counts_all_words_not_the_first_one():
     text = "Соревнования по 1С для студентов\nКарьера, работодатели и стажировки"
@@ -212,21 +237,33 @@ def test_announcement_report_and_publishing():
     assert is_announcement(contest) and not auto_publish(contest)  # без даты — администратору
     # Без даты и без приглашения — новость; с приглашением, но о прошедшем — отчёт
     assert not is_announcement(parse_post({"text": "Участники встречи подписали соглашение"}, PUBLISHED))
-    assert not is_announcement(parse_post({"text": "Конкурс прошёл, спасибо всем! Ждём вас в следующем году"}, PUBLISHED))
+    assert not is_announcement(
+        parse_post({"text": "Конкурс прошёл, спасибо всем! Ждём вас в следующем году"}, PUBLISHED)
+    )
     # Поздравление с датой — не мероприятие, а с приглашением — мероприятие
-    assert not is_announcement(parse_post({"text": "С Днём народного единства! 4 ноября — наш общий праздник"}, PUBLISHED))
+    assert not is_announcement(
+        parse_post({"text": "С Днём народного единства! 4 ноября — наш общий праздник"}, PUBLISHED)
+    )
     assert is_announcement(parse_post({"text": "С праздником! Приглашаем на концерт 4 ноября в 18:00"}, PUBLISHED))
     # «Дедлайн: 23 ноября» — срок, а не день мероприятия
     assert parse_post({"text": "Опрос о карьере\n📅 Дедлайн: 23 ноября"}, PUBLISHED).event_date is None
     # История и рубрики — не мероприятия
-    assert not is_announcement(parse_post({"text": "Сегодня, 7 ноября, в истории науки: 159 лет назад родилась Мария"}, PUBLISHED))
-    assert not is_announcement(parse_post({"text": "Ко Дню волонтёра, который отмечается 5 декабря, запускаем рубрику"}, PUBLISHED))
+    assert not is_announcement(
+        parse_post({"text": "Сегодня, 7 ноября, в истории науки: 159 лет назад родилась Мария"}, PUBLISHED)
+    )
+    assert not is_announcement(
+        parse_post({"text": "Ко Дню волонтёра, который отмечается 5 декабря, запускаем рубрику"}, PUBLISHED)
+    )
     # Призовые места — не место проведения; «Формат: полностью онлайн» — онлайн
     assert parse_post({"text": "Розыгрыш 1 ноября\n1-3 место — Толстовка ТПУ"}, PUBLISHED).location is None
     assert parse_post({"text": "Старт курса: 6 ноября\nФормат: полностью онлайн"}, PUBLISHED).location == "Онлайн"
     # Ссылка на сообщество ВКонтакте — не место
-    assert parse_post({"text": "Следить за программой можно в сообществе МКЦ ТПУ в социальной сети ВКонтакте"},
-                      PUBLISHED).location is None
+    assert (
+        parse_post(
+            {"text": "Следить за программой можно в сообществе МКЦ ТПУ в социальной сети ВКонтакте"}, PUBLISHED
+        ).location
+        is None
+    )
     report = parse_post({"text": "1 октября прошёл турнир по футболу"}, PUBLISHED)
     assert is_report(report, PUBLISHED)
     ready = parse_post({"text": "Турнир по футболу 5 ноября в 18:00"}, PUBLISHED)

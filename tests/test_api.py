@@ -16,6 +16,7 @@ def ids(response):
 
 # Лента
 
+
 def test_feed_shows_only_published_upcoming_events(client, add_event, today):
     ongoing = add_event(event_date=today - timedelta(days=2), end_date=today + timedelta(days=1))
     current = add_event(event_date=today)
@@ -46,19 +47,21 @@ def test_feed_response_matches_event_format(client, add_event, today):
         contact="test@example.com",
     )
     assert client.get("/api/events").json() == {
-        "items": [{
-            "id": event_id,
-            "title": "Мастер-класс по алтимату",
-            "organizer": "Спортклуб «Сибирские львы»",
-            "category": {"slug": "sport", "name": "Спорт"},
-            "source": "vk",
-            "event_date": today.isoformat(),
-            "end_date": None,
-            "start_time": "18:00",
-            "end_time": None,
-            "location": "ул. Карпова, 4",
-            "original_post_link": "https://vk.com/wall-44845822_52494",
-        }],
+        "items": [
+            {
+                "id": event_id,
+                "title": "Мастер-класс по алтимату",
+                "organizer": "Спортклуб «Сибирские львы»",
+                "category": {"slug": "sport", "name": "Спорт"},
+                "source": "vk",
+                "event_date": today.isoformat(),
+                "end_date": None,
+                "start_time": "18:00",
+                "end_time": None,
+                "location": "ул. Карпова, 4",
+                "original_post_link": "https://vk.com/wall-44845822_52494",
+            }
+        ],
         "page": 1,
         "per_page": 20,
         "total": 1,
@@ -116,6 +119,7 @@ def test_pagination(client, add_event):
 
 # Одно мероприятие
 
+
 def test_event_detail_adds_description_and_image_but_not_contact(client, add_event):
     event_id = add_event(
         start_time=time(9, 30),
@@ -144,6 +148,7 @@ def test_hidden_or_missing_event_is_404(client, add_event):
 
 # Категории
 
+
 def test_categories_count_only_events_from_the_feed(client, add_event, today):
     add_event(category="sport")
     add_event(category="sport", event_date=today + timedelta(days=3))
@@ -156,6 +161,7 @@ def test_categories_count_only_events_from_the_feed(client, add_event, today):
 
 
 # Заявки из формы
+
 
 def submission(today, **fields):
     return {
@@ -179,18 +185,22 @@ def test_submission_is_saved_as_pending_and_not_shown(client, session_factory, t
     assert client.get("/api/events").json()["total"] == 0
 
 
-@pytest.mark.parametrize("fields", [
-    {"category": "unknown"},
-    {"event_date": "2026-11-01"},  # вчера
-    {"end_date": "2026-11-03"},  # раньше event_date (7 ноября)
-    {"contact": ""},
-    {"title": "   "},
-])
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"category": "unknown"},
+        {"event_date": "2026-11-01"},  # вчера
+        {"end_date": "2026-11-03"},  # раньше event_date (7 ноября)
+        {"contact": ""},
+        {"title": "   "},
+    ],
+)
 def test_invalid_submission_is_rejected(client, today, fields):
     assert client.post("/api/submissions", json=submission(today, **fields)).status_code == 422
 
 
 # Для фронтенда
+
 
 def test_per_page_lets_calendar_take_a_month_at_once(client, add_event):
     for _ in range(25):
@@ -254,8 +264,14 @@ def test_empty_form_fields_are_saved_as_not_specified(client, session_factory, t
     assert response.status_code == 201, response.text
     with session_factory() as db:
         event = db.get(Event, response.json()["id"])
-        saved = (event.end_date, event.start_time, event.end_time, event.location,
-                 event.original_post_link, event.description)
+        saved = (
+            event.end_date,
+            event.start_time,
+            event.end_time,
+            event.location,
+            event.original_post_link,
+            event.description,
+        )
         assert saved == (None,) * 6
 
 
@@ -279,7 +295,9 @@ def test_end_time_must_be_after_start_within_one_day(client, today):
         ("body", "end_time"): "Время окончания должно быть позже начала",
     }
     # У многодневного мероприятия «до 10:00 последнего дня» — нормально
-    multi_day = submission(today, end_date=(today + timedelta(days=7)).isoformat(), start_time="18:00", end_time="10:00")
+    multi_day = submission(
+        today, end_date=(today + timedelta(days=7)).isoformat(), start_time="18:00", end_time="10:00"
+    )
     assert client.post("/api/submissions", json=multi_day).status_code == 201
 
 
@@ -287,11 +305,14 @@ def test_cors_lets_dev_server_of_frontend_call_api(client):
     origin = CORS_ORIGINS[0]
     response = client.get("/api/categories", headers={"Origin": origin})
     assert response.headers["access-control-allow-origin"] == origin
-    preflight = client.options("/api/submissions", headers={
-        "Origin": origin,
-        "Access-Control-Request-Method": "POST",
-        "Access-Control-Request-Headers": "content-type",
-    })
+    preflight = client.options(
+        "/api/submissions",
+        headers={
+            "Origin": origin,
+            "Access-Control-Request-Method": "POST",
+            "Access-Control-Request-Headers": "content-type",
+        },
+    )
     assert preflight.status_code == 200
     foreign = client.get("/api/categories", headers={"Origin": "https://example.com"})
     assert "access-control-allow-origin" not in foreign.headers
@@ -302,6 +323,7 @@ def test_unknown_api_path_is_404(client):
 
 
 # Проверка работы
+
 
 def test_health_is_ok_when_database_is_ready(client):
     response = client.get("/api/health")

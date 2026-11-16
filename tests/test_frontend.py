@@ -1,4 +1,5 @@
 """Раздача собранного фронтенда: страницы по прямой ссылке, файлы сборки, API не перекрывается."""
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -58,3 +59,9 @@ def test_without_build_root_leads_to_api_docs(tmp_path):
     mount_frontend(app, tmp_path / "dist")
     response = TestClient(app).get("/", follow_redirects=False)
     assert (response.status_code, response.headers["location"]) == (307, "/docs")
+
+
+def test_missing_assets_return_404_instead_of_html(site):
+    assert site.get("/assets/missing.js").status_code == 404
+    assert site.get("/missing.css").status_code == 404
+    assert site.get("/event/12").headers["cache-control"] == "no-cache"

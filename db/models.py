@@ -1,4 +1,5 @@
 """Таблицы базы. Поля мероприятия — по docs/event_format.md."""
+
 from datetime import date, datetime, time
 
 from sqlalchemy import CheckConstraint, ForeignKey, String, Text, UniqueConstraint, func
@@ -22,6 +23,23 @@ class User(Base):
     # Только хеш, сам пароль в базе не хранится (НФТ-06)
     password_hash: Mapped[str] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
+class AdminSession(Base):
+    """Сессия администратора. В базе хранится хеш случайного cookie, не сам секрет."""
+
+    __tablename__ = "admin_sessions"
+    token_hash: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    expires_at: Mapped[datetime] = mapped_column(index=True)
+    user: Mapped[User] = relationship()
+
+
+class LoginAttempt(Base):
+    __tablename__ = "admin_login_attempts"
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    failures: Mapped[int] = mapped_column(default=0)
+    window_start: Mapped[datetime]
 
 
 class VkCommunity(Base):

@@ -1,11 +1,12 @@
 """Сборщик с фейковым клиентом ВК: без сети, на in-memory SQLite."""
+
 from datetime import date, datetime, timezone
 
 import pytest
 from sqlalchemy import select
 
 from collector import vk_client
-from collector.run import run, save_post
+from collector.run import run
 from db.models import Event, VkPost
 
 
@@ -26,13 +27,12 @@ def make_post(vk_post_id: int, text: str, ts: int = 1_700_000_000) -> dict:
 @pytest.fixture
 def session_factory(monkeypatch):
     """Своя база в памяти плюс подмена SessionLocal в collector.run."""
-    from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
     from sqlalchemy.pool import StaticPool
 
     from db.database import make_engine
-    from db.models import Base, Category, VkCommunity
     from db.init_db import CATEGORIES
+    from db.models import Base, Category, VkCommunity
 
     engine = make_engine("sqlite://", poolclass=StaticPool)
     Base.metadata.create_all(engine)
@@ -44,6 +44,7 @@ def session_factory(monkeypatch):
         db.commit()
 
     import collector.run as run_module
+
     monkeypatch.setattr(run_module, "SessionLocal", factory)
     yield factory
     engine.dispose()
@@ -51,15 +52,17 @@ def session_factory(monkeypatch):
 
 def test_run_creates_published_and_pending(session_factory):
     future = int(datetime(2027, 11, 3, 12, 0).timestamp())
-    fake = FakeClient({
-        -44845822: [
-            make_post(1, "Турнир по теннису\n3 ноября 2027\n#спорт", ts=future),
-            make_post(2, "Конкурс без даты\nПриглашаем всех участвовать\n#творчество", ts=future),
-        ],
-        -19220040: [
-            make_post(3, "Лекция про ИИ 10 ноября 2027 18:00", ts=future),
-        ],
-    })
+    fake = FakeClient(
+        {
+            -44845822: [
+                make_post(1, "Турнир по теннису\n3 ноября 2027\n#спорт", ts=future),
+                make_post(2, "Конкурс без даты\nПриглашаем всех участвовать\n#творчество", ts=future),
+            ],
+            -19220040: [
+                make_post(3, "Лекция про ИИ 10 ноября 2027 18:00", ts=future),
+            ],
+        }
+    )
 
     stats = run(limit_per_community=10, client=fake)
     assert stats["events_new"] == 3
@@ -86,10 +89,14 @@ def test_run_is_idempotent(session_factory):
 
 
 def test_broken_post_does_not_stop_others(session_factory):
-    fake = FakeClient({-44845822: [
-        {"id": 1, "text": "", "date": None, "attachments": []},  # упадёт на fromtimestamp
-        make_post(2, "Турнир 3 ноября 2027 #спорт", ts=1_800_000_000),
-    ]})
+    fake = FakeClient(
+        {
+            -44845822: [
+                {"id": 1, "text": "", "date": None, "attachments": []},  # упадёт на fromtimestamp
+                make_post(2, "Турнир 3 ноября 2027 #спорт", ts=1_800_000_000),
+            ]
+        }
+    )
     stats = run(limit_per_community=10, client=fake)
     assert stats["events_new"] == 1
 
@@ -104,11 +111,15 @@ def events(factory):
 
 
 def test_broken_post_in_the_middle_keeps_earlier_ones(session_factory):
-    fake = FakeClient({-44845822: [
-        make_post(1, "Турнир по футболу 20 октября в 18:00", ts=OCT_14),
-        {"id": 2, "text": "Турнир", "date": None},
-        make_post(3, "Турнир по волейболу 21 октября в 18:00", ts=OCT_14),
-    ]})
+    fake = FakeClient(
+        {
+            -44845822: [
+                make_post(1, "Турнир по футболу 20 октября в 18:00", ts=OCT_14),
+                {"id": 2, "text": "Турнир", "date": None},
+                make_post(3, "Турнир по волейболу 21 октября в 18:00", ts=OCT_14),
+            ]
+        }
+    )
     stats = run(limit_per_community=10, client=fake)
     assert (stats["events_new"], stats["errors"]) == (2, 1)
     assert len(events(session_factory)) == 2
@@ -116,7 +127,9 @@ def test_broken_post_in_the_middle_keeps_earlier_ones(session_factory):
 
 def test_repost_is_parsed_from_the_original_post(session_factory):
     repost = make_post(5, ".", ts=OCT_14)
-    repost["copy_history"] = [{"id": 777, "owner_id": -555, "text": "Лекция о дронах 20 октября в 18:00\nГде: корпус 10"}]
+    repost["copy_history"] = [
+        {"id": 777, "owner_id": -555, "text": "Лекция о дронах 20 октября в 18:00\nГде: корпус 10"}
+    ]
     run(limit_per_community=10, client=FakeClient({-19220040: [repost]}))
     [event] = events(session_factory)
     assert event.title == "Лекция о дронах 20 октября в 18:00"
@@ -137,13 +150,19 @@ def test_repost_of_a_collected_post_does_not_duplicate_the_event(session_factory
 def test_news_reports_and_ads_do_not_become_events(session_factory):
     ad = make_post(4, "Скидки 20 октября", ts=OCT_14)
     ad["marked_as_ads"] = 1
-    fake = FakeClient({-44845822: [
-        make_post(1, "Поздравляем команду с победой!", ts=OCT_14),
-        make_post(2, "1 октября прошёл турнир по футболу, спасибо всем", ts=OCT_14),
-        make_post(3, "Конкурс фотографий\nПриглашаем присылать работы", ts=OCT_14),
-        make_post(5, "ТПУ и ТГУ создадут совместную лабораторию: участники встречи подписали соглашение", ts=OCT_14),
-        ad,
-    ]})
+    fake = FakeClient(
+        {
+            -44845822: [
+                make_post(1, "Поздравляем команду с победой!", ts=OCT_14),
+                make_post(2, "1 октября прошёл турнир по футболу, спасибо всем", ts=OCT_14),
+                make_post(3, "Конкурс фотографий\nПриглашаем присылать работы", ts=OCT_14),
+                make_post(
+                    5, "ТПУ и ТГУ создадут совместную лабораторию: участники встречи подписали соглашение", ts=OCT_14
+                ),
+                ad,
+            ]
+        }
+    )
     stats = run(limit_per_community=10, client=fake)
     assert (stats["post_only"], stats["ads"], stats["events_new"]) == (3, 1, 1)
     [contest] = events(session_factory)
@@ -153,7 +172,10 @@ def test_news_reports_and_ads_do_not_become_events(session_factory):
 def test_publication_day_is_counted_in_tomsk_time(session_factory):
     # 14 октября 19:30 UTC — в Томске уже 15 октября, 02:30. «Сегодня» — это 15-е
     late = int(datetime(2026, 10, 14, 19, 30, tzinfo=timezone.utc).timestamp())
-    run(limit_per_community=10, client=FakeClient({-44845822: [make_post(1, "Сегодня в 19:00 турнир по футболу", ts=late)]}))
+    run(
+        limit_per_community=10,
+        client=FakeClient({-44845822: [make_post(1, "Сегодня в 19:00 турнир по футболу", ts=late)]}),
+    )
     [event] = events(session_factory)
     assert event.event_date == date(2026, 10, 15)
 
@@ -174,6 +196,7 @@ def test_vk_markup_does_not_reach_the_site(session_factory):
 
 # Клиент ВК
 
+
 class FakeResponse:
     def __init__(self, payload):
         self.payload = payload
@@ -187,8 +210,10 @@ class FakeResponse:
 
 def test_vk_client_retries_rate_limit_and_keeps_token_out_of_url(monkeypatch):
     calls = []
-    answers = [{"error": {"error_code": 6, "error_msg": "Too many requests per second"}},
-               {"response": {"items": [{"id": 1}]}}]
+    answers = [
+        {"error": {"error_code": 6, "error_msg": "Too many requests per second"}},
+        {"response": {"items": [{"id": 1}]}},
+    ]
 
     def fake_post(url, data, timeout):
         calls.append((url, data))
@@ -204,8 +229,11 @@ def test_vk_client_retries_rate_limit_and_keeps_token_out_of_url(monkeypatch):
 
 
 def test_vk_client_does_not_retry_access_errors(monkeypatch):
-    monkeypatch.setattr(vk_client.httpx, "post", lambda url, data, timeout: FakeResponse(
-        {"error": {"error_code": 15, "error_msg": "Access denied"}}))
+    monkeypatch.setattr(
+        vk_client.httpx,
+        "post",
+        lambda url, data, timeout: FakeResponse({"error": {"error_code": 15, "error_msg": "Access denied"}}),
+    )
     client = vk_client.VkClient(token="secret", min_interval=0)
     with pytest.raises(vk_client.VkError, match="15"):
         client.get_posts(-1)

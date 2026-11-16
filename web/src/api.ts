@@ -74,9 +74,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   const timeout = setTimeout(abort, 15000)
   let response: Response
   let body: unknown = null
-  let isJson = false
+  let isJson: boolean
   try {
     response = await fetch(`/api${path}`, {
+      credentials: 'same-origin',
       ...options,
       headers: { Accept: 'application/json', ...options.headers },
       signal: controller.signal,
@@ -110,6 +111,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       response.status, fields,
     )
   }
+  if (response.status === 204) return undefined as T
   if (!isJson) throw new ApiError('Сервер вернул неверный ответ. Попробуйте ещё раз.', response.status)
   return body as T
 }
@@ -138,4 +140,23 @@ export const submitEvent = (submission: Submission) => request<{ id: number; sta
   method: 'POST',
   headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(submission),
+})
+
+export interface AdminSession { username: string; csrf_token: string }
+export type EventStatus = 'pending' | 'published' | 'rejected'
+export interface AdminEvent extends Omit<EventDetail, 'category' | 'event_date'> {
+  category: Event['category'] | null
+  event_date: string | null
+  status: EventStatus
+  contact: string | null
+}
+export type Moderation = Omit<Submission, 'contact'> & { status: EventStatus }
+export const getAdminSession = (signal?: AbortSignal) => request<AdminSession>('/admin/me', { signal })
+export const loginAdmin = (username: string, password: string) => request<AdminSession>('/admin/login', {
+  method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }),
+})
+export const logoutAdmin = (csrf: string) => request<void>('/admin/logout', { method: 'POST', headers: { 'X-CSRF-Token': csrf } })
+export const fetchAdminEvents = (status: string, page: number, signal?: AbortSignal) => request<{ items: AdminEvent[]; total: number; page: number }>(`/admin/events?status=${status}&page=${page}`, { signal })
+export const saveAdminEvent = (id: number, data: Moderation, csrf: string) => request<AdminEvent>(`/admin/events/${id}`, {
+  method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf }, body: JSON.stringify(data),
 })

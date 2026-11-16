@@ -4,12 +4,19 @@
 Задача — не идеальный разбор, а честный: что не нашли — None, и пост уйдёт
 администратору (pending). Дата и время — в collector/dates.py.
 """
+
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time
 
 from collector.dates import (
-    CROSS_RANGE_RE, NUM_FULL_RE, NUM_SHORT_RE, RANGE_RE, SINGLE_RE, TIME_RE, parse_when,
+    CROSS_RANGE_RE,
+    NUM_FULL_RE,
+    NUM_SHORT_RE,
+    RANGE_RE,
+    SINGLE_RE,
+    TIME_RE,
+    parse_when,
 )
 
 # Разметка ВК: «[club14752902|Профком ТПУ]», «[id1|Иван]», «#Мероприятие@postpu»
@@ -18,16 +25,15 @@ VK_LINK_RE = re.compile(r"\[(?:https?://)?[^\]|]+\|([^\]]+)\]")
 VK_HASHTAG_SUFFIX_RE = re.compile(r"(#[\wА-Яа-яЁё]+)@[\w.]+")
 
 HASHTAG_RE = re.compile(r"#([\wА-Яа-яЁё]+)")
-EMOJI_RE = re.compile(
-    "[" "\U0001F300-\U0001FAFF" "\U00002600-\U000027BF" "\U0001F1E6-\U0001F1FF" "←-⇿■-◿️‍" "]+"
-)
+EMOJI_RE = re.compile("[\U0001f300-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff←-⇿■-◿️‍]+")
 MARKDOWN_RE = re.compile(r"[*_`>]+")
 
 # Место
 
 # «Где: МКЦ», «Место проведения — ауд. 301», «📍 Адрес: …». Значение — на той же строке
 LABEL_RE = re.compile(
-    r"(?<![а-яё])(?:где|место(?:\s+проведения)?|локация|адрес)\s*[:—–-]\s*(\S.*)$", re.IGNORECASE,
+    r"(?<![а-яё])(?:где|место(?:\s+проведения)?|локация|адрес)\s*[:—–-]\s*(\S.*)$",
+    re.IGNORECASE,
 )
 # «COLIZEUM Лампочка — место проведения»
 REVERSE_LABEL_RE = re.compile(r"^(.+?)\s*[—–-]\s*место\s+проведения", re.IGNORECASE)
@@ -87,19 +93,104 @@ ONLINE_WEAK_RE = re.compile(r"онлайн|дистанционн", re.IGNORECAS
 
 # Категория. Основы слов ищутся с начала слова; слово в первой строке весит вдвое больше
 CATEGORY_WORDS: dict[str, list[str]] = {
-    "sport": ["спорт", "турнир", "матч", "соревнован", "футбол", "баскетбол", "волейбол", "теннис", "фрисби",
-              "алтимат", "забег", "лыж", "плаван", "шахмат", "киберспорт", "cs2", "фитнес", "тренировк", "siblions"],
-    "science": ["наук", "научн", "лекци", "конференц", "семинар", "диссертац", "доклад", "исследова",
-                "лаборатор", "хакатон", "олимпиад", "дрон", "беспилот", "ии", "нейросет", "физик", "математ"],
-    "creativity": ["культур", "творч", "концерт", "фестивал", "мкц", "выступлен", "кастинг", "танц", "вокал",
-                   "театр", "кино", "книжн", "литератур", "экомод", "дефиле", "выставк", "музык", "хореограф",
-                   "искусств", "dance"],
+    "sport": [
+        "спорт",
+        "турнир",
+        "матч",
+        "соревнован",
+        "футбол",
+        "баскетбол",
+        "волейбол",
+        "теннис",
+        "фрисби",
+        "алтимат",
+        "забег",
+        "лыж",
+        "плаван",
+        "шахмат",
+        "киберспорт",
+        "cs2",
+        "фитнес",
+        "тренировк",
+        "siblions",
+    ],
+    "science": [
+        "наук",
+        "научн",
+        "лекци",
+        "конференц",
+        "семинар",
+        "диссертац",
+        "доклад",
+        "исследова",
+        "лаборатор",
+        "хакатон",
+        "олимпиад",
+        "дрон",
+        "беспилот",
+        "ии",
+        "нейросет",
+        "физик",
+        "математ",
+    ],
+    "creativity": [
+        "культур",
+        "творч",
+        "концерт",
+        "фестивал",
+        "мкц",
+        "выступлен",
+        "кастинг",
+        "танц",
+        "вокал",
+        "театр",
+        "кино",
+        "книжн",
+        "литератур",
+        "экомод",
+        "дефиле",
+        "выставк",
+        "музык",
+        "хореограф",
+        "искусств",
+        "dance",
+    ],
     "volunteering": ["волонт", "добро", "субботник", "благотвор", "акци", "донор", "животн", "приют", "эколог"],
-    "career": ["карьер", "стажировк", "ваканси", "работодател", "професси", "предприним", "стартап", "бизнес",
-               "резюме", "кадров", "трудоустр", "предприят", "кейс", "1с"],
-    "student_life": ["студсовет", "общежит", "общаг", "школа актива", "студжизн", "первокурсник", "знакомств",
-                     "открытых дверей", "ярмарк", "отряд", "разговорн", "speaking", "йог", "оздоров", "здоров",
-                     "зрени", "скрининг"],
+    "career": [
+        "карьер",
+        "стажировк",
+        "ваканси",
+        "работодател",
+        "професси",
+        "предприним",
+        "стартап",
+        "бизнес",
+        "резюме",
+        "кадров",
+        "трудоустр",
+        "предприят",
+        "кейс",
+        "1с",
+    ],
+    "student_life": [
+        "студсовет",
+        "общежит",
+        "общаг",
+        "школа актива",
+        "студжизн",
+        "первокурсник",
+        "знакомств",
+        "открытых дверей",
+        "ярмарк",
+        "отряд",
+        "разговорн",
+        "speaking",
+        "йог",
+        "оздоров",
+        "здоров",
+        "зрени",
+        "скрининг",
+    ],
 }
 _CATEGORY_PATTERNS = {
     slug: [re.compile(r"(?<![а-яёa-z0-9])" + re.escape(stem)) for stem in stems]
@@ -107,16 +198,16 @@ _CATEGORY_PATTERNS = {
 }
 # Сообщества с ясным профилем: подсказка весом в одно слово и решающий голос при равенстве
 COMMUNITY_CATEGORY = {
-    -44845822: "sport",          # Спортклуб «Сибирские львы»
-    -24890431: "career",         # Центр карьеры ТПУ
-    -2713603: "volunteering",    # ВО «Стиль Жизни»
+    -44845822: "sport",  # Спортклуб «Сибирские львы»
+    -24890431: "career",  # Центр карьеры ТПУ
+    -2713603: "volunteering",  # ВО «Стиль Жизни»
     -215750011: "volunteering",  # Экологический клуб
-    -80072684: "creativity",     # МКЦ ТПУ
-    -222585418: "career",        # Студенты Росатома
-    -215901557: "career",        # Энергетический клуб
+    -80072684: "creativity",  # МКЦ ТПУ
+    -222585418: "career",  # Студенты Росатома
+    -215901557: "career",  # Энергетический клуб
     -222469101: "student_life",  # Оздоровительная комиссия
-    -14752902: "student_life",   # Профком
-    -31264870: "student_life",   # Движение первых
+    -14752902: "student_life",  # Профком
+    -31264870: "student_life",  # Движение первых
     -109388070: "student_life",  # Команда ТПУ
 }
 
@@ -182,6 +273,7 @@ def extract_title(text: str) -> str:
 
 # Категория
 
+
 def extract_category(text: str, owner_id: int | None = None) -> str | None:
     low = text.lower().replace("ё", "е")
     title = low.split("\n", 1)[0]
@@ -210,6 +302,7 @@ def extract_category(text: str, owner_id: int | None = None) -> str | None:
 
 # Место
 
+
 def _without_date_and_time(line: str) -> str:
     for pattern in (CROSS_RANGE_RE, RANGE_RE, SINGLE_RE, NUM_FULL_RE, NUM_SHORT_RE, TIME_SPAN_RE, WEEKDAY_NAME_RE):
         line = pattern.sub(" ", line)
@@ -222,17 +315,21 @@ def _strip_lead(line: str) -> str:
 
 
 def _is_specific(value: str) -> bool:
-    return bool(re.search(r"\d", value) or re.search(r"(?<!^)[«\"]?[А-ЯЁA-Z][\wа-яё]", value[1:])
-                or KNOWN_VENUE_RE.search(value) or STREET_RE.search(value))
+    return bool(
+        re.search(r"\d", value)
+        or re.search(r"(?<!^)[«\"]?[А-ЯЁA-Z][\wа-яё]", value[1:])
+        or KNOWN_VENUE_RE.search(value)
+        or STREET_RE.search(value)
+    )
 
 
 def _cut_end(value: str) -> str:
     for m in PLACE_STOP_RE.finditer(value):
         if m.group(0).startswith("."):
-            word = re.search(r"([А-Яа-яЁё]+)\.$", value[:m.start() + 1])
+            word = re.search(r"([А-Яа-яЁё]+)\.$", value[: m.start() + 1])
             if word and word.group(1).lower() in ABBREVIATIONS:
                 continue
-        return value[:m.start()]
+        return value[: m.start()]
     return value
 
 
@@ -258,14 +355,14 @@ def _place_in_line(line: str, need_preposition: bool) -> str | None:
     if not signal:
         return None
     start = None
-    for prep in PREPOSITION_RE.finditer(rest[:signal.start()]):
-        gap = rest[prep.end():signal.start()]
+    for prep in PREPOSITION_RE.finditer(rest[: signal.start()]):
+        gap = rest[prep.end() : signal.start()]
         if len(gap) <= 60 and not re.search(r"[.!?:]", gap):
             start = prep.end()
     if start is None:
         if need_preposition:
             return None
-        before = rest[:signal.start()]
+        before = rest[: signal.start()]
         # Без предлога место должно начинать строку: «Танцевальный зал МКЦ», «2-й корпус»
         if len(before.strip()) > 25 or re.search(r"[.!?:]", before):
             return None
@@ -293,7 +390,7 @@ def extract_location(text: str, date_line: str | None = None) -> str | None:
         if LINE_SKIP_RE.search(line):
             continue
         m = LABEL_RE.search(line)
-        if m and not RANK_BEFORE_RE.search(line[:m.start()]) and (value := _clean_place(m.group(1))):
+        if m and not RANK_BEFORE_RE.search(line[: m.start()]) and (value := _clean_place(m.group(1))):
             return value
         if (m := REVERSE_LABEL_RE.search(_strip_lead(line))) and (value := _clean_place(m.group(1))):
             return value
@@ -351,6 +448,7 @@ def parse_post(item: dict, published: datetime) -> Parsed:
 
 
 # Что делать с постом
+
 
 def is_announcement(parsed: Parsed) -> bool:
     """Похоже на анонс. Без даты — нужно приглашение и никаких признаков отчёта.

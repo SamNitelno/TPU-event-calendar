@@ -33,3 +33,9 @@ python -m pytest tests/test_api.py tests/test_frontend.py
 - Данные — только из базы, через модели `db/`. API таблицы не создаёт.
 - В ленту попадают только `published` мероприятия с датой и категорией, не прошедшие, по порядку даты и времени.
 - Имена полей — как в `docs/event_format.md`. Поменяли ответ — обновите его и `docs/api.md` в том же PR.
+
+## Модерация и размещение
+
+`api/auth.py` — scrypt, сессии, Secure/HttpOnly cookie и CSRF. `api/admin.py` — вход, выход, очередь и решения администратора. Контракт — в [docs/api.md](../docs/api.md). Время жизни сессии — 12 часов, сессии сохраняются между экземплярами Vercel в PostgreSQL.
+
+Vercel загружает `api.main:app`, версия Python 3.12. Сборка сайта копируется в корневой `public` для CDN. API раздаёт HTML с `no-cache`, отсутствующий ресурс возвращает 404. [Порядок развёртывания](../docs/deployment.md).

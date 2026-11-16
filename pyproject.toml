@@ -1,0 +1,17 @@
+[tool.vercel]
+entrypoint = "api.main:app"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+extend-exclude = ["venv", ".venv-deploy", "web/node_modules", "web/dist"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.format]
+line-ending = "lf"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+

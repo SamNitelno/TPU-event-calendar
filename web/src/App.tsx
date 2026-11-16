@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import AdminPage from './AdminPage'
+import { useEffect, useEffectEvent, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ArrowLeft, ArrowRight, BriefcaseBusiness, CalendarDays, ChevronLeft, ChevronRight, Clock3, FlaskConical, GraduationCap, Grid2X2, HandHeart, List, MapPin, Music2, Plus, RefreshCw, Search, Trophy, type LucideIcon } from 'lucide-react'
 import { ApiError, fetchCategories, fetchEvent, fetchEvents, fetchMonthEvents, submitEvent, type Category, type Event, type Submission } from './api'
@@ -11,20 +12,20 @@ const categoryIcons: Record<string, LucideIcon> = {
 const message = (error: unknown) => error instanceof Error ? error.message : 'Не удалось загрузить данные.'
 
 function useResource<T>(key: string, load: (signal: AbortSignal) => Promise<T>) {
-  const [state, setState] = useState<{ data?: T; error?: string; status?: number }>({})
+  const [state, setState] = useState<{ key?: string; attempt?: number; data?: T; error?: string; status?: number }>({})
   const [attempt, retry] = useState(0)
+  const loadData = useEffectEvent(load)
   useEffect(() => {
     const controller = new AbortController()
-    setState({})
-    load(controller.signal).then(data => {
-      if (!controller.signal.aborted) setState({ data })
+    loadData(controller.signal).then(data => {
+      if (!controller.signal.aborted) setState({ key, attempt, data })
     }).catch(error => {
-      if (!controller.signal.aborted) setState({ error: message(error), status: error instanceof ApiError ? error.status : 0 })
+      if (!controller.signal.aborted) setState({ key, attempt, error: message(error), status: error instanceof ApiError ? error.status : 0 })
     })
     return () => controller.abort()
     // Ключ описывает параметры загрузки; новая функция сама по себе не перезапускает запрос.
   }, [key, attempt])
-  return { ...state, retry: () => retry(value => value + 1) }
+  return { ...(state.key === key && state.attempt === attempt ? state : {}), retry: () => retry(value => value + 1) }
 }
 
 function Notice({ children, retry, error = false }: { children: ReactNode; retry?: () => void; error?: boolean }) {
@@ -63,7 +64,6 @@ function Header() {
   const [query, setQuery] = useState(params.get('q') || '')
   const navigate = useNavigate()
   const location = useLocation()
-  useEffect(() => setQuery(params.get('q') || ''), [params])
   function search(e: FormEvent) {
     e.preventDefault()
     const next = new URLSearchParams(params)
@@ -96,21 +96,21 @@ function Feed({ category, q, day, today }: { category: string; q: string; day: s
   const [attempt, retry] = useState(0)
   const [items, setItems] = useState<Event[]>([])
   const [total, setTotal] = useState(0)
-  const [loading, setLoading] = useState(true)
+  const [settled, setSettled] = useState('')
+  const requestKey = `${page}-${attempt}`
+  const loading = settled !== requestKey
   const [error, setError] = useState('')
   useEffect(() => {
     const controller = new AbortController()
-    setLoading(true)
-    setError('')
     fetchEvents({ category, q, page, ...(day ? { date_from: day, date_to: day } : {}) }, controller.signal).then(result => {
       if (controller.signal.aborted) return
       setItems(previous => page === 1 ? result.items : [...previous, ...result.items.filter(item => !previous.some(old => old.id === item.id))])
       setTotal(result.total)
     }).catch(error => {
       if (!controller.signal.aborted) setError(message(error))
-    }).finally(() => { if (!controller.signal.aborted) setLoading(false) })
+    }).finally(() => { if (!controller.signal.aborted) setSettled(requestKey) })
     return () => controller.abort()
-  }, [category, q, day, page, attempt])
+  }, [category, q, day, page, attempt, requestKey])
   const groups = new Map<string, Event[]>()
   for (const event of items) {
     const firstVisibleDay = day || today
@@ -123,7 +123,7 @@ function Feed({ category, q, day, today }: { category: string; q: string; day: s
       <div className="day-events">{events!.map(event => <EventCard key={event.id} event={event} />)}</div>
     </section>)}
     {loading && <Notice>Загружаем мероприятия…</Notice>}
-    {error && <Notice error retry={() => retry(value => value + 1)}>{error}</Notice>}
+    {error && <Notice error retry={() => { setError(''); retry(value => value + 1) }}>{error}</Notice>}
     {!loading && !error && !items.length && <Notice>Пока нет мероприятий{q || category || day ? ' по выбранным условиям. Измените поиск или фильтры.' : '. Загляните позже или подайте своё.'}</Notice>}
     {!loading && !error && items.length < total && <div className="load-more"><button className="button secondary" onClick={() => setPage(value => value + 1)}>Показать ещё <ArrowRight size={17} /></button><small>Показано {items.length} из {total}</small></div>}
   </div>
@@ -281,8 +281,8 @@ export default function App() {
     window.scrollTo?.(0, 0)
   }, [location.pathname])
   const list = categories.data || []
-  return <><a href="#main" className="skip-link">К содержимому</a><Header /><div className="site-layout"><aside className="sidebar"><div className="sidebar-inner"><p className="eyebrow">Категории</p><Categories categories={list} /><div className="collection-note"><strong><RefreshCw size={16} />Сбор из ВКонтакте</strong><p>Анонсы собираются из сообществ ТПУ. События с неполными данными проверяет администратор.</p></div></div></aside>
+  return <><a href="#main" className="skip-link">К содержимому</a><Header key={location.search} /><div className="site-layout"><aside className="sidebar"><div className="sidebar-inner"><p className="eyebrow">Категории</p><Categories categories={list} /><div className="collection-note"><strong><RefreshCw size={16} />Сбор из ВКонтакте</strong><p>Анонсы собираются из сообществ ТПУ. События с неполными данными проверяет администратор.</p></div></div></aside>
     <main id="main"><Categories categories={list} mobile />{categories.error && <Notice error retry={categories.retry}>Не удалось загрузить категории. {categories.error}</Notice>}
-      <Routes><Route path="/" element={<Listing categories={list} today={today} />} /><Route path="/calendar" element={<Listing categories={list} calendar today={today} />} /><Route path="/event/:id" element={<EventPage />} /><Route path="/submit" element={<SubmitPage categories={list} today={today} />} /><Route path="/guide" element={<Guide />} /><Route path="/admin" element={<Notice>Панель администратора пока недоступна. <Link to="/">Вернуться к афише</Link></Notice>} /><Route path="*" element={<Notice>Страница не найдена. <Link to="/">Вернуться к афише</Link></Notice>} /></Routes>
-    </main></div><footer className="site-footer"><div><p>Календарь мероприятий Томского политехнического университета</p><nav aria-label="Навигация в подвале"><Link to="/">Афиша</Link><Link to="/guide">Как пользоваться</Link><Link to="/submit">Подать мероприятие</Link></nav></div></footer></>
+      <Routes><Route path="/" element={<Listing categories={list} today={today} />} /><Route path="/calendar" element={<Listing categories={list} calendar today={today} />} /><Route path="/event/:id" element={<EventPage />} /><Route path="/submit" element={<SubmitPage categories={list} today={today} />} /><Route path="/guide" element={<Guide />} /><Route path="/admin" element={<AdminPage categories={list} onModerated={categories.retry} />} /><Route path="*" element={<Notice>Страница не найдена. <Link to="/">Вернуться к афише</Link></Notice>} /></Routes>
+    </main></div><footer className="site-footer"><div><p>Календарь мероприятий Томского политехнического университета</p><nav aria-label="Навигация в подвале"><Link to="/">Афиша</Link><Link to="/guide">Как пользоваться</Link><Link to="/submit">Подать мероприятие</Link><Link to="/admin">Администратор</Link></nav></div></footer></>
 }
