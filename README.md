@@ -25,7 +25,7 @@
 | `db/`        | Таблицы, подключение к базе, создание и наполнение базы                | Шехина К.    |
 | `collector/` | Загрузка постов из ВК, разбор даты, времени и места, проверка качества | Шехина К.    |
 | `api/`       | FastAPI: запросы `/api/...` и выдача страниц                           | Дугарова А.  |
-| `web/`       | Шаблоны страниц и стили                                                | Селенкова Е. |
+| `web/`       | React-приложение, страницы и стили                                                | Селенкова Е. |
 
 В каждой папке есть свой README: что туда класть и как запускать.
 
@@ -40,9 +40,19 @@ pip install -r requirements.txt
 copy .env.example .env           # macOS/Linux: cp .env.example .env — и вписать ключ VK
 python -m db.init_db             # создать таблицы, категории и сообщества
 python -m db.seed_test           # тестовые мероприятия — только для разработки
-uvicorn api.main:app --reload    # сайт: http://127.0.0.1:8000, описание API: /docs
+python -m uvicorn api.main:app --reload  # API: http://127.0.0.1:8000/docs
 python -m collector.run          # загрузить новые посты из ВК
 python -m pytest                 # тесты
 ```
+
+Фронтенд запускается во втором терминале:
+
+```bash
+cd web
+npm ci
+npm run dev                     # http://127.0.0.1:5173, запросы /api проксируются в FastAPI
+```
+
+Для раздачи сайта из FastAPI выполните `npm run build` из `web` и перезапустите API. Сборка создаётся в `web/dist`, после этого сайт доступен на http://127.0.0.1:8000. Для dev и build нужен Node.js 22.12+. Подробности, переменные и проверки — в [web/README.md](web/README.md).
 
 Запросы API и подключение фронтенда — в [docs/api.md](docs/api.md).
