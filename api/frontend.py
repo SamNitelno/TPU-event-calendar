@@ -3,7 +3,8 @@
 Сайт и API живут на одном адресе, поэтому запросы /api/... не упираются в CORS,
 а прямые ссылки вида /event/12, /submit и /admin открывают приложение (index.html).
 """
-from pathlib import Path
+
+from pathlib import Path, PurePosixPath
 
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
@@ -18,6 +19,7 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
     index = root / "index.html"
 
     if not index.is_file():
+
         @app.get("/", include_in_schema=False)
         def no_frontend():
             return RedirectResponse("/docs")
@@ -32,5 +34,7 @@ def mount_frontend(app: FastAPI, dist: Path) -> None:
         file = (root / path).resolve()
         if path and file.is_file() and file.is_relative_to(root):
             return FileResponse(file, headers=ASSETS_CACHE if path.startswith("assets/") else None)
+        if PurePosixPath(path).suffix or path.startswith("assets/"):
+            raise HTTPException(404, "Файл не найден")
         # Остальные адреса — страницы приложения, маршрут разбирает сам фронтенд
-        return FileResponse(index)
+        return FileResponse(index, headers={"Cache-Control": "no-cache"})

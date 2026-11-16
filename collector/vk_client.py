@@ -1,4 +1,5 @@
 """Тонкая обёртка над wall.get. Никакой бизнес-логики — только HTTP, паузы и повторы."""
+
 import os
 import time
 
@@ -40,8 +41,7 @@ class VkClient:
             self._throttle()
             # POST, а не GET: ключ уходит в теле запроса и не попадает в адрес,
             # а значит, и в тексты ошибок и логи
-            response = httpx.post(API_URL, data={**params, "access_token": self.token, "v": self.version},
-                                  timeout=15)
+            response = httpx.post(API_URL, data={**params, "access_token": self.token, "v": self.version}, timeout=15)
             response.raise_for_status()
             data = response.json()
             if "error" not in data:

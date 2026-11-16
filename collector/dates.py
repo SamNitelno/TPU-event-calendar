@@ -10,13 +10,24 @@
 
 Принцип из db/models.py: не нашли дату — пусто, дату публикации не подставляем.
 """
+
 import re
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
 
 MONTHS = {
-    "января": 1, "февраля": 2, "марта": 3, "апреля": 4, "мая": 5, "июня": 6,
-    "июля": 7, "августа": 8, "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12,
+    "января": 1,
+    "февраля": 2,
+    "марта": 3,
+    "апреля": 4,
+    "мая": 5,
+    "июня": 6,
+    "июля": 7,
+    "августа": 8,
+    "сентября": 9,
+    "октября": 10,
+    "ноября": 11,
+    "декабря": 12,
 }
 # Порядок как у date.weekday(): понедельник — 0
 WEEKDAY_STEMS = ["понедельник", "вторник", "сред", "четверг", "пятниц", "суббот", "воскресень"]
@@ -170,7 +181,7 @@ def _candidates(text: str, published: datetime) -> list[_Candidate]:
         if start is None:
             return
         line_start, line_end = _line_bounds(text, m.start())
-        before = text[line_start:m.start()]
+        before = text[line_start : m.start()]
         if DEADLINE_BEFORE_RE.search(before) or DEADLINE_WORD_RE.search(before):
             return  # срок подачи заявки, а не день мероприятия
         if end is not None and end < start:
@@ -227,10 +238,13 @@ def _candidates(text: str, published: datetime) -> list[_Candidate]:
         if not (1 <= d <= 31 and 1 <= month <= 12):
             continue
         line_start, line_end = _line_bounds(text, m.start())
-        line, after = text[line_start:line_end], text[m.end():line_end]
+        line, after = text[line_start:line_end], text[m.end() : line_end]
         # Признак даты: 📅/«Дата» в строке, день недели или время сразу после
-        if not (DATE_MARK_RE.search(line) or WEEKDAY_WORD_RE.match(after.strip(" (")) or
-                re.match(r"\s*(?:в|,|—|-)?\s*\d{1,2}:\d{2}", after)):
+        if not (
+            DATE_MARK_RE.search(line)
+            or WEEKDAY_WORD_RE.match(after.strip(" ("))
+            or re.match(r"\s*(?:в|,|—|-)?\s*\d{1,2}:\d{2}", after)
+        ):
             continue
         add(m, _safe_date(_infer_year(month, d, published), month, d), None)
 
@@ -258,8 +272,7 @@ def _choose(candidates: list[_Candidate]) -> tuple[_Candidate | None, bool]:
     best = max(candidates, key=lambda c: (c.score, -c.pos))
     last = best.end or best.start
     rivals = [
-        c for c in candidates
-        if c is not best and not (best.start <= c.start <= last) and c.score >= best.score - 0.5
+        c for c in candidates if c is not best and not (best.start <= c.start <= last) and c.score >= best.score - 0.5
     ]
     return best, bool(rivals)
 
@@ -274,7 +287,7 @@ def _times_in(segment: str) -> list[tuple[int, int, time]]:
     result.sort()
     adjusted = []
     for start, end, value in result:
-        if MSK_AFTER_RE.match(segment[end:end + 20]):
+        if MSK_AFTER_RE.match(segment[end : end + 20]):
             # Томск — МСК+4: «15:00 по МСК» на сайте должно быть 19:00
             value = (datetime.combine(date.min, value) + MSK_TO_TOMSK).time()
         adjusted.append((start, end, value))

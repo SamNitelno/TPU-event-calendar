@@ -6,6 +6,7 @@
 
 По последнему элементу loc фронтенд понимает, у какого поля формы показать текст.
 """
+
 import logging
 
 from fastapi import Request

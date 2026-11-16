@@ -34,9 +34,9 @@
 Все команды выполняются из корня репозитория.
 
 ```bash
-python -m venv venv
+py -3.12 -m venv venv
 venv\Scripts\activate            # macOS/Linux: source venv/bin/activate
-pip install -r requirements.txt
+pip install --require-hashes -r requirements-dev.txt
 copy .env.example .env           # macOS/Linux: cp .env.example .env — и вписать ключ VK
 python -m db.init_db             # создать таблицы, категории и сообщества
 python -m db.seed_test           # тестовые мероприятия — только для разработки
@@ -53,6 +53,14 @@ npm ci
 npm run dev                     # http://127.0.0.1:5173, запросы /api проксируются в FastAPI
 ```
 
-Для раздачи сайта из FastAPI выполните `npm run build` из `web` и перезапустите API. Сборка создаётся в `web/dist`, после этого сайт доступен на http://127.0.0.1:8000. Для dev и build нужен Node.js 22.12+. Подробности, переменные и проверки — в [web/README.md](web/README.md).
+Для раздачи сайта из FastAPI выполните `npm run build` из `web` и перезапустите API. Сборка создаётся в `web/dist`, после этого сайт доступен на http://127.0.0.1:8000. Для dev и build нужен Node.js 22.x (не ниже 22.22.2). Подробности, переменные и проверки — в [web/README.md](web/README.md).
 
 Запросы API и подключение фронтенда — в [docs/api.md](docs/api.md).
+
+## Production и администратор
+
+Полная инструкция с названиями пунктов Vercel, созданием Neon, переменными и ежедневным сбором: [docs/deployment.md](docs/deployment.md).
+
+Администратор создаётся отдельно: `python -m db.create_admin semyon`. Ввод пароля скрыт; пароль по умолчанию отсутствует. Вход и очередь проверки — `/admin`.
+
+Проверки перед PR: `ruff check .`, `ruff format --check .`, `python -m pytest`, `npm --prefix web run lint`, `npm --prefix web test`, `npm --prefix web run build`. В GitHub Actions эти проверки выполняются с Python 3.12 и Node.js 22, тесты сервера — на SQLite и PostgreSQL 16.

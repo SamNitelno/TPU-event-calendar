@@ -18,6 +18,7 @@
 - если в посте поля нет (в эталоне пусто) и разбор его не выдумал — это верный ответ;
 - «опубликовано сразу» считается так же, как в сборщике: collector.extract.auto_publish.
 """
+
 import argparse
 import csv
 import re
@@ -30,16 +31,51 @@ from pathlib import Path
 from collector.extract import Parsed, auto_publish, parse_post
 
 REFERENCE = Path(__file__).resolve().parent.parent / "data" / "reference_50.csv"
-COLUMNS = ["link", "community", "published_at", "text", "is_event", "event_date", "end_date",
-           "start_time", "location", "category"]
+COLUMNS = [
+    "link",
+    "community",
+    "published_at",
+    "text",
+    "is_event",
+    "event_date",
+    "end_date",
+    "start_time",
+    "location",
+    "category",
+]
 # Порог решения по Р-04 и требование к итоговой версии (НФТ-04)
 MANUAL_EDIT_BELOW = 0.70
 TARGET = 0.85
 
 # Слова, которые есть почти в каждом месте и сами по себе место не определяют
 GENERIC_WORDS = {
-    "тпу", "томск", "г", "ул", "улица", "пр", "просп", "проспект", "т", "д", "дом", "стр", "корпус", "корп",
-    "ауд", "аудитория", "каб", "кабинет", "этаж", "зал", "и", "в", "на", "по", "с", "у", "площадка",
+    "тпу",
+    "томск",
+    "г",
+    "ул",
+    "улица",
+    "пр",
+    "просп",
+    "проспект",
+    "т",
+    "д",
+    "дом",
+    "стр",
+    "корпус",
+    "корп",
+    "ауд",
+    "аудитория",
+    "каб",
+    "кабинет",
+    "этаж",
+    "зал",
+    "и",
+    "в",
+    "на",
+    "по",
+    "с",
+    "у",
+    "площадка",
 }
 WORD_RE = re.compile(r"[a-zа-я0-9]+")
 STEM = 5  # столько первых букв сравниваем: «корпусе» и «корпус» — одно слово
@@ -112,6 +148,7 @@ class Report:
 
 # Чтение эталона
 
+
 def _optional(value: str) -> str | None:
     value = (value or "").strip()
     return value or None
@@ -158,6 +195,7 @@ def load_reference(path: Path = REFERENCE) -> list[Reference]:
 
 # Сверка
 
+
 def place_words(place: str) -> set[str]:
     return {word[:STEM] for word in WORD_RE.findall(place.lower().replace("ё", "е"))}
 
@@ -196,8 +234,17 @@ def evaluate(rows: list[Reference], parse: Parser = parse_post) -> Report:
             parsed = parse({"text": row.text, "owner_id": owner_id(row.link)}, row.published_at)
         except Exception as exc:  # падение разбора на посте — тоже неверный ответ
             report.crashes.append(f"{row.link}: {type(exc).__name__}: {exc}")
-            parsed = Parsed(title="", description=row.text, event_date=None, end_date=None, start_time=None,
-                            end_time=None, location=None, category=None, image_url=None)
+            parsed = Parsed(
+                title="",
+                description=row.text,
+                event_date=None,
+                end_date=None,
+                start_time=None,
+                end_time=None,
+                location=None,
+                category=None,
+                image_url=None,
+            )
 
         if not row.is_event:
             report.not_events += 1
@@ -206,16 +253,36 @@ def evaluate(rows: list[Reference], parse: Parser = parse_post) -> Report:
             continue
 
         verdicts = [
-            ("дата", report.date.add(row.event_date, parsed.event_date, row.event_date == parsed.event_date),
-             row.event_date, parsed.event_date),
-            ("конец", report.end_date.add(row.end_date, parsed.end_date, row.end_date == parsed.end_date),
-             row.end_date, parsed.end_date),
-            ("время", report.time.add(row.start_time, parsed.start_time, row.start_time == parsed.start_time),
-             row.start_time, parsed.start_time),
-            ("место", report.place.add(row.location, parsed.location, same_place(row.location, parsed.location)),
-             row.location, parsed.location),
-            ("категория", report.category.add(row.category, parsed.category, row.category == parsed.category),
-             row.category, parsed.category),
+            (
+                "дата",
+                report.date.add(row.event_date, parsed.event_date, row.event_date == parsed.event_date),
+                row.event_date,
+                parsed.event_date,
+            ),
+            (
+                "конец",
+                report.end_date.add(row.end_date, parsed.end_date, row.end_date == parsed.end_date),
+                row.end_date,
+                parsed.end_date,
+            ),
+            (
+                "время",
+                report.time.add(row.start_time, parsed.start_time, row.start_time == parsed.start_time),
+                row.start_time,
+                parsed.start_time,
+            ),
+            (
+                "место",
+                report.place.add(row.location, parsed.location, same_place(row.location, parsed.location)),
+                row.location,
+                parsed.location,
+            ),
+            (
+                "категория",
+                report.category.add(row.category, parsed.category, row.category == parsed.category),
+                row.category,
+                parsed.category,
+            ),
         ]
         if auto_publish(parsed):
             report.published += 1
@@ -233,19 +300,23 @@ def evaluate(rows: list[Reference], parse: Parser = parse_post) -> Report:
 
 # Вывод
 
+
 def _line(name: str, result: FieldResult) -> str:
-    return (f"{name:<6} {result.correct:>3} из {result.total:<3} {result.share:>6.1%}   "
-            f"не нашёл {result.missed}, ошибся {result.wrong}, лишнее {result.invented}")
+    return (
+        f"{name:<6} {result.correct:>3} из {result.total:<3} {result.share:>6.1%}   "
+        f"не нашёл {result.missed}, ошибся {result.wrong}, лишнее {result.invented}"
+    )
 
 
 def decision(report: Report) -> str:
     worst = min(report.date.share, report.place.share)
     if worst < MANUAL_EDIT_BELOW:
-        return (f"Р-04: доля верных дат или мест ниже {MANUAL_EDIT_BELOW:.0%} — нужна ручная правка "
-                f"даты, времени и места в админке (ФТ-12)")
+        return (
+            f"Р-04: доля верных дат или мест ниже {MANUAL_EDIT_BELOW:.0%} — нужна ручная правка "
+            f"даты, времени и места в админке (ФТ-12)"
+        )
     if worst < TARGET:
-        return (f"Р-04: ручная правка не обязательна, но до требования {TARGET:.0%} (НФТ-04) "
-                f"разбор нужно доработать")
+        return f"Р-04: ручная правка не обязательна, но до требования {TARGET:.0%} (НФТ-04) разбор нужно доработать"
     return f"Р-04: снят, дата и место верны не реже чем в {TARGET:.0%} случаев"
 
 
@@ -257,14 +328,20 @@ def print_report(report: Report, total: int) -> None:
     print(_line("Время", report.time))
     print(_line("Место", report.place))
     print(_line("Катег.", report.category))
-    print(f"Сборщик опубликовал бы сразу (есть дата и категория): {report.published} из {events}, "
-          f"из них с неверной датой: {len(report.published_wrong_date)}. "
-          f"Ушли бы администратору: {events - report.published}")
+    print(
+        f"Сборщик опубликовал бы сразу (есть дата и категория): {report.published} из {events}, "
+        f"из них с неверной датой: {len(report.published_wrong_date)}. "
+        f"Ушли бы администратору: {events - report.published}"
+    )
     print(f"Не анонсы, у которых разбор нашёл дату: {len(report.not_events_with_date)} из {report.not_events}")
     print(f"Падений разбора: {len(report.crashes)}")
     print(decision(report))
-    for title, lines in (("Падения", report.crashes), ("Опубликовано с неверной датой", report.published_wrong_date),
-                         ("Расхождения", report.mismatches), ("Не анонсы с датой", report.not_events_with_date)):
+    for title, lines in (
+        ("Падения", report.crashes),
+        ("Опубликовано с неверной датой", report.published_wrong_date),
+        ("Расхождения", report.mismatches),
+        ("Не анонсы с датой", report.not_events_with_date),
+    ):
         if lines:
             print(f"\n{title}:")
             for line in lines:

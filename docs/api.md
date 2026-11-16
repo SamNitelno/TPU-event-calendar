@@ -165,7 +165,7 @@ export default defineConfig({
 | Календарь на месяц             | `GET /api/events?date_from=2026-11-01&date_to=2026-11-30&per_page=100` |
 | Страница мероприятия           | `GET /api/events/{id}`; `404` — «Мероприятие не найдено»        |
 | Форма «Подать мероприятие»     | `POST /api/submissions`                                        |
-| Админка                        | Запросов пока нет — ФТ-12, спринт 5                            |
+| Админка                        | `/api/admin/...` — см. раздел ниже                            |
 
 **Поля макета и API.** В макете свои имена полей и коды категорий. Код API менять не нужно — достаточно перевести их в одном месте фронтенда, например в `src/api.ts`.
 
@@ -193,3 +193,15 @@ export default defineConfig({
 Поля формы макета: «Название» → `title`, «Организация» → `organizer`, «Контакт для связи» → `contact`, «Категория» → `category`, «Дата» → `event_date`, «Начало» → `start_time`, «Окончание» → `end_time`, «Место проведения» → `location`, «Ссылка на пост ВКонтакте» → `original_post_link`, «Описание» → `description`.
 
 В макете «сегодня» зашито как 2026-10-27: подписи «Сегодня» и «Завтра» нужно считать от текущей даты.
+
+## Админка (ФТ-12)
+
+- `POST /api/admin/login`: JSON `username`, `password`. Ответ: `username`, `csrf_token`; cookie `tpu_admin` (HttpOnly, SameSite=Lax, Secure в Vercel, путь `/api/admin`). Пять неудач блокируют логин на 15 минут (429). Ошибка входа — 401, внешний Origin — 403.
+- `GET /api/admin/me`: текущий `username`, `csrf_token`; без действующей сессии 401.
+- `POST /api/admin/logout`: `X-CSRF-Token`, ответ 204; удаляет сессию и cookie.
+- `GET /api/admin/events?status=pending&page=1`: приватная очередь, статусы `pending`, `published`, `rejected`, `all`. По 20 записей; ответ `items`, `total`, `page`. В записях также `status`, `contact`; `category`, дата и другие неизвестные поля могут быть null. Этот ответ не должен использоваться публичной лентой.
+- `PUT /api/admin/events/{id}`: полное редактирование полей `title`, `organizer`, `category` (slug), `event_date`, `end_date`, `start_time`, `end_time`, `location`, `original_post_link`, `description`, `status`. Контакт, источник и изображение сохраняются. Изменения требуют заголовок `X-CSRF-Token`, полученный при входе или из `/me`.
+
+Публиковать можно только с датой и существующей категорией. Модератор может исправлять и прошлые события; проверка диапазонов времени/даты и VK-ссылки сохраняется. Ошибки полей — 422 в общем формате. Сессии живут 12 часов, отозванные и истёкшие дают 401. Пароль и секрет cookie в JSON не возвращаются, сессия в localStorage не хранится.
+
+Размещение: [deployment.md](deployment.md). Полная схема таблиц сессий — в [db/README.md](../db/README.md).

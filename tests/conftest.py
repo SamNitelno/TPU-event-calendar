@@ -1,3 +1,4 @@
+import os
 from datetime import date
 
 import pytest
@@ -22,13 +23,17 @@ def today():
 @pytest.fixture
 def session_factory():
     # Своя база в памяти на каждый тест. StaticPool держит одно соединение, иначе база пропадёт
-    engine = make_engine("sqlite://", poolclass=StaticPool)
+    url = os.getenv("TEST_DATABASE_URL", "sqlite://")
+    engine = make_engine(url, **({"poolclass": StaticPool} if url.startswith("sqlite") else {}))
+    if not url.startswith("sqlite"):
+        Base.metadata.drop_all(engine)
     Base.metadata.create_all(engine)
     factory = sessionmaker(bind=engine, expire_on_commit=False)
     with factory() as db:
         db.add_all(Category(slug=slug, name=name) for slug, name in CATEGORIES)
         db.commit()
     yield factory
+    Base.metadata.drop_all(engine)
     engine.dispose()
 
 
@@ -52,7 +57,9 @@ def add_event(session_factory):
     def add(category="sport", **fields):
         defaults = dict(source="vk", status="published", title="Мероприятие", organizer="Команда ТПУ", event_date=TODAY)
         with session_factory() as db:
-            event = Event(category=db.scalar(select(Category).where(Category.slug == category)), **{**defaults, **fields})
+            event = Event(
+                category=db.scalar(select(Category).where(Category.slug == category)), **{**defaults, **fields}
+            )
             db.add(event)
             db.commit()
             return event.id

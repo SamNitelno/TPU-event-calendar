@@ -1,11 +1,18 @@
 # секреты
 .env
+.env.*
+!.env.example
 
 # Python
 __pycache__/
 *.pyc
 venv/
 .venv/
+.venv*/
+.pytest_cache/
+.ruff_cache/
+.vercel/
+public/
 
 # базы данных
 *.db
@@ -16,3 +23,5 @@ venv/
 .vscode/
 .DS_Store
 ~$*
+
+/docs/deployment.md

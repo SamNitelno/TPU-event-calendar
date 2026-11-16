@@ -2,6 +2,7 @@
 
 Можно запускать повторно: записи не дублируются, а названия и ссылки обновляются по спискам ниже.
 """
+
 from sqlalchemy import select
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session

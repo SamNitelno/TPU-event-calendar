@@ -3,6 +3,7 @@
 Запуск из корня репозитория: uvicorn api.main:app --reload
 Описание запросов: docs/api.md и http://127.0.0.1:8000/docs
 """
+
 import os
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
@@ -15,6 +16,7 @@ from sqlalchemy import and_, func, or_, select
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session, joinedload
 
+from api.admin import router as admin_router
 from api.errors import database_error_handler, invalid, validation_error_handler
 from api.frontend import mount_frontend
 from api.schemas import CategoryWithCount, EventDetail, EventShort, EventsPage, Submission, SubmissionCreated
@@ -91,10 +93,12 @@ def list_events(
         conditions.append(Event.category.has(Category.slug == category))
     search = (q or "").strip()
     if search:
-        conditions.append(or_(
-            Event.title.icontains(search, autoescape=True),
-            Event.description.icontains(search, autoescape=True),
-        ))
+        conditions.append(
+            or_(
+                Event.title.icontains(search, autoescape=True),
+                Event.description.icontains(search, autoescape=True),
+            )
+        )
 
     total = db.scalar(select(func.count()).select_from(Event).where(*conditions))
     events = db.scalars(
@@ -121,9 +125,7 @@ def list_events(
 )
 def get_event(event_id: int, db: Session = Depends(get_db)):
     # Прошедшее мероприятие открывается по ссылке, а заявки на проверке и отклонённые — нет
-    event = db.scalar(
-        select(Event).options(joinedload(Event.category)).where(Event.id == event_id, is_public())
-    )
+    event = db.scalar(select(Event).options(joinedload(Event.category)).where(Event.id == event_id, is_public()))
     if event is None:
         raise HTTPException(404, "Мероприятие не найдено")
     return EventDetail.model_validate(event)
@@ -131,18 +133,20 @@ def get_event(event_id: int, db: Session = Depends(get_db)):
 
 @router.get("/categories", response_model=list[CategoryWithCount], summary="Категории с числом мероприятий в ленте")
 def list_categories(db: Session = Depends(get_db), today: date = Depends(get_today)):
-    counts = dict(db.execute(
-        select(Event.category_id, func.count())
-        .where(is_public(), last_day() >= today)
-        .group_by(Event.category_id)
-    ).all())
+    counts = dict(
+        db.execute(
+            select(Event.category_id, func.count()).where(is_public(), last_day() >= today).group_by(Event.category_id)
+        ).all()
+    )
     return [
         CategoryWithCount(slug=c.slug, name=c.name, events_count=counts.get(c.id, 0))
         for c in db.scalars(select(Category).order_by(Category.id))
     ]
 
 
-@router.post("/submissions", response_model=SubmissionCreated, status_code=201, summary="Подать мероприятие через форму")
+@router.post(
+    "/submissions", response_model=SubmissionCreated, status_code=201, summary="Подать мероприятие через форму"
+)
 def create_submission(data: Submission, db: Session = Depends(get_db), today: date = Depends(get_today)):
     if data.event_date < today:
         raise invalid(("body", "event_date"), "Дата мероприятия уже прошла")
@@ -158,5 +162,6 @@ def create_submission(data: Submission, db: Session = Depends(get_db), today: da
 
 
 app.include_router(router)
+app.include_router(admin_router)
 # Последним: раздача собранного фронтенда перехватывает все остальные адреса
 mount_frontend(app, Path(os.getenv("WEB_DIST_DIR", ROOT / "web" / "dist")))

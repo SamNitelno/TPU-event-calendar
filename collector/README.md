@@ -55,3 +55,7 @@ python -m pytest tests/test_parser.py tests/test_collector.py
 - Если дата не найдена, поле остаётся пустым, а дату публикации не подставляем.
 - Ошибка одного сообщества пишется в лог и не останавливает весь сбор.
 - Поменяли разбор — запустите `python -m collector.evaluate`. Новые правила проверяйте на придуманных текстах в `tests/test_parser.py`, а не подгоняйте под посты эталона.
+
+## Расписание в production
+
+Workflow `.github/workflows/collector.yml` запускается в 00:17 UTC (07:17 Томск) из основной ветки и вручную через Actions → Collect VK events → Run workflow. Секреты DATABASE_URL и VK_TOKEN задаются в GitHub environment `production`. Ошибки сообществ/постов и отсутствие активных сообществ дают код завершения 1, успешные записи сохраняются. Ограничение `--limit` — 1–1000. [Полная настройка](../docs/deployment.md).
