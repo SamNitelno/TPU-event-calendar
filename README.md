@@ -64,3 +64,5 @@ npm run dev                     # http://127.0.0.1:5173, запросы /api п�
 Администратор создаётся отдельно: `python -m db.create_admin semyon`. Ввод пароля скрыт; пароль по умолчанию отсутствует. Вход и очередь проверки — `/admin`.
 
 Проверки перед PR: `ruff check .`, `ruff format --check .`, `python -m pytest`, `npm --prefix web run lint`, `npm --prefix web test`, `npm --prefix web run build`. В GitHub Actions эти проверки выполняются с Python 3.12 и Node.js 22, тесты сервера — на SQLite и PostgreSQL 16.
+
+Production-манифест Vercel: `pyproject.toml` + `uv.lock`. CI отдельно выполняет `uv sync --locked --no-dev` и импорт приложения в чистом окружении. При обновлении Python-зависимостей синхронизируйте манифест, uv.lock и requirements-файлы; `scripts/check_runtime.py` проверяет совпадение основных версий.
